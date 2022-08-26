@@ -11,10 +11,10 @@ import (
 	"math"
 	"math/rand"
 	"net"
-	"netwatcher-agent/models"
+	"netwatcher-agent/agent_models"
 )
 
-func CheckICMP(t models.IcmpTarget) {
+func CheckICMP(t agent_models.IcmpTarget) {
 	ipAddr := net.IPAddr{IP: net.ParseIP(t.Address)}
 
 	seq := rand.Intn(math.MaxUint16)
@@ -23,7 +23,7 @@ func CheckICMP(t models.IcmpTarget) {
 	t.Result.ElapsedMilliseconds = hop.Elapsed.Milliseconds()
 }
 
-func CheckMTR(t *models.MtrTarget, count int) {
+func CheckMTR(t *agent_models.MtrTarget, count int) {
 	m, ch, err := mtr.NewMTR(t.Address, srcAddr, timeout, interval, hopSleep,
 		maxHops, maxUnknownHops, ringBufferSize, ptrLookup)
 	if err != nil {
@@ -44,18 +44,18 @@ func CheckMTR(t *models.MtrTarget, count int) {
 	t.Result = string(s)
 }
 
-func CheckNetworkInfo() (models.NetworkInfo, error) {
+func CheckNetworkInfo() (agent_models.NetworkInfo, error) {
 	user, err := speedtest.FetchUserInfo()
 	if err != nil {
-		return models.NetworkInfo{}, err
+		return agent_models.NetworkInfo{}, err
 	}
 
 	localInterface, err := gateway.DiscoverInterface()
 	if err != nil {
-		return models.NetworkInfo{}, err
+		return agent_models.NetworkInfo{}, err
 	}
 
-	return models.NetworkInfo{
+	return agent_models.NetworkInfo{
 		LocalSubnet:      localInterface.String(),
 		PublicAddress:    user.IP,
 		InternetProvider: user.Isp,
@@ -64,18 +64,18 @@ func CheckNetworkInfo() (models.NetworkInfo, error) {
 	}, nil
 }
 
-func RunSpeedTest() (models.SpeedTestInfo, error) {
+func RunSpeedTest() (agent_models.SpeedTestInfo, error) {
 	user, err := speedtest.FetchUserInfo()
 	if err != nil {
-		return models.SpeedTestInfo{}, err
+		return agent_models.SpeedTestInfo{}, err
 	}
 	serverList, err := speedtest.FetchServers(user)
 	if err != nil {
-		return models.SpeedTestInfo{}, err
+		return agent_models.SpeedTestInfo{}, err
 	}
 	targets, err := serverList.FindServer([]int{})
 	if err != nil {
-		return models.SpeedTestInfo{}, err
+		return agent_models.SpeedTestInfo{}, err
 	}
 
 	for _, s := range targets {
@@ -83,7 +83,7 @@ func RunSpeedTest() (models.SpeedTestInfo, error) {
 		s.DownloadTest(false)
 		s.UploadTest(false)
 
-		return models.SpeedTestInfo{
+		return agent_models.SpeedTestInfo{
 			Latency: s.Latency,
 			DLSpeed: s.DLSpeed,
 			ULSpeed: s.ULSpeed,
@@ -92,5 +92,5 @@ func RunSpeedTest() (models.SpeedTestInfo, error) {
 		}, nil
 	}
 
-	return models.SpeedTestInfo{}, errors.New("unable to reach Ookla")
+	return agent_models.SpeedTestInfo{}, errors.New("unable to reach Ookla")
 }

@@ -1,4 +1,4 @@
-package models
+package agent_models
 
 // eventally add more types of targets checks (SNMP, HTTP, etc.)
 // nmap???

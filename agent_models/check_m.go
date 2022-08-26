@@ -1,4 +1,4 @@
-package models
+package agent_models
 
 import "time"
 
