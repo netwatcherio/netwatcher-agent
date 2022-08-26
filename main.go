@@ -49,10 +49,8 @@ func main() {
 		go func() {
 			defer wg.Done()
 			CheckMTR(&st, 5)
+			fmt.Printf("Hop info %s %s\n", st.Address, st.Result)
 		}()
-		wg.Wait()
-
-		fmt.Printf("Hop info %s %s", st.Address, st.Result)
 	}
 
 	var t2 = []agent_models.IcmpTarget{
@@ -64,20 +62,45 @@ func main() {
 	wg.Wait()
 
 	for _, st := range t2 {
+		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			CheckICMP(&st)
+			fmt.Printf("Time for %s - %vms \n", st.Address, st.Result.ElapsedMilliseconds)
 		}()
-		wg.Wait()
-		fmt.Printf("Time for %s - %vms", st.Address, st.Result.ElapsedMilliseconds)
 	}
 
-	speedInfo, err := RunSpeedTest()
+	wg.Wait()
 
-	if err != nil {
-		log.Fatalln(err)
-	}
+	wg.Add(1)
+	fmt.Println("Running speed test...\n")
+	go func() {
+		defer wg.Done()
+		speedInfo, err := RunSpeedTest()
 
-	fmt.Println(speedInfo)
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		fmt.Printf("Speed %fmbps - %fmbps \n%s %s\n", speedInfo.ULSpeed, speedInfo.DLSpeed, speedInfo.Server, speedInfo.Host)
+	}()
+
+	wg.Wait()
+
+	wg.Add(1)
+	fmt.Println("Getting network information...\n")
+	go func() {
+		defer wg.Done()
+		networkInfo, err := CheckNetworkInfo()
+
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		fmt.Printf("Local Subnet: %s, Local Gateway: %s, ISP: %s, WAN IP: %s",
+			networkInfo.LocalSubnet, networkInfo.DefaultGateway, networkInfo.InternetProvider, networkInfo.PublicAddress)
+	}()
+
+	wg.Wait()
 
 }

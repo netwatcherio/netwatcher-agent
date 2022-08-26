@@ -7,11 +7,13 @@ import "time"
 type NetworkInfo struct {
 	LocalSubnet      string `json:"local_subnet"`
 	PublicAddress    string `json:"public_address"`
+	DefaultGateway   string `json:"default_gateway"`
 	InternetProvider string `json:"internet_provider"`
 	Lat              string `json:"lat"`
 	Long             string `json:"long"`
 }
 
+// log how long it took and then timestamp of when it was started and finished
 type SpeedTestInfo struct {
 	Latency time.Duration `json:"latency"`
 	DLSpeed float64       `json:"dl_speed"`
