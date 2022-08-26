@@ -4,6 +4,7 @@ import (
 	"errors"
 	pj "github.com/hokaccha/go-prettyjson"
 	"github.com/jackpal/gateway"
+	"github.com/sagostin/netwatcher-agent/agent_models"
 	"github.com/showwin/speedtest-go/speedtest"
 	"github.com/tonobo/mtr/pkg/icmp"
 	"github.com/tonobo/mtr/pkg/mtr"
@@ -11,10 +12,9 @@ import (
 	"math"
 	"math/rand"
 	"net"
-	"netwatcher-agent/agent_models"
 )
 
-func CheckICMP(t agent_models.IcmpTarget) {
+func CheckICMP(t *agent_models.IcmpTarget) {
 	ipAddr := net.IPAddr{IP: net.ParseIP(t.Address)}
 
 	seq := rand.Intn(math.MaxUint16)
