@@ -1,13 +1,17 @@
 package main
 
 import (
-	"fmt"
 	_ "github.com/joho/godotenv"
-	"sync"
 )
 import _ "log"
 
 //import "os"
+
+/*
+Obkio is using WebSockets to control information, instead the device stores the information
+for MTR and such. We want to store it on the server.
+
+*/
 
 /*
 
@@ -24,42 +28,5 @@ snmp component
 */
 
 func main() {
-	var wg sync.WaitGroup
-
-	fmt.Println("Starting NetWatcher Agent...")
-
-	var t = []mtrTarget{
-		{
-			Address: "1.1.1.1",
-		},
-	}
-
-	for _, st := range t {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			CheckMTR(&st)
-		}()
-		wg.Wait()
-
-		fmt.Printf("Hop info %s %s", st.Address, st.Result)
-	}
-
-	var t2 = []icmpTarget{
-		{
-			Address: "1.1.1.1",
-		},
-	}
-
-	wg.Wait()
-
-	for _, st := range t2 {
-		go func() {
-			defer wg.Done()
-			CheckICMP(&st)
-		}()
-		wg.Wait()
-		fmt.Printf("Time for %s - %vms", st.Address, st.Result.ElapsedMilliseconds)
-	}
 
 }

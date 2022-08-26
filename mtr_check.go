@@ -11,7 +11,7 @@ type mtrTarget struct {
 	Result  string `json:"result"`
 }
 
-func CheckMTR(t *mtrTarget) {
+func CheckMTR(t *mtrTarget, count int) {
 	m, ch, err := mtr.NewMTR(t.Address, srcAddr, timeout, interval, hopSleep,
 		maxHops, maxUnknownHops, ringBufferSize, ptrLookup)
 	if err != nil {
