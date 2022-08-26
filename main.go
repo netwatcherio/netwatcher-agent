@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	_ "github.com/joho/godotenv"
 	"github.com/sagostin/netwatcher-agent/agent_models"
@@ -49,8 +50,16 @@ func main() {
 		go func() {
 			defer wg.Done()
 			CheckMTR(&st, 5)
-			fmt.Printf("Hop info %s %s\n", st.Address, st.Result)
 		}()
+	}
+
+	wg.Wait()
+	for s := range t {
+		j, err := json.Marshal(t[s].Result)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("Hop info %s %s\n", t[s].Address, string(j))
 	}
 
 	var t2 = []agent_models.IcmpTarget{

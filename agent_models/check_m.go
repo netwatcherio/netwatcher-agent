@@ -1,6 +1,9 @@
 package agent_models
 
-import "time"
+import (
+	"github.com/tonobo/mtr/pkg/mtr"
+	"time"
+)
 
 // NetworkInfo network info such as subnet, local network, public ip,
 // and isp, and lat and long
@@ -23,8 +26,8 @@ type SpeedTestInfo struct {
 }
 
 type MtrTarget struct {
-	Address string `json:"address"`
-	Result  string `json:"result"`
+	Address string   `json:"address"`
+	Result  *mtr.MTR `json:"result"`
 }
 
 type IcmpTarget struct {

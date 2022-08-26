@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	pj "github.com/hokaccha/go-prettyjson"
 	"github.com/jackpal/gateway"
 	"github.com/sagostin/netwatcher-agent/agent_models"
 	"github.com/showwin/speedtest-go/speedtest"
@@ -36,12 +35,8 @@ func CheckMTR(t *agent_models.MtrTarget, count int) {
 		}
 	}(ch)
 	m.Run(ch, count)
-	s, err := pj.Marshal(m)
-	if err != nil {
-		log.Fatal(err)
-	}
-	//fmt.Println(string(s))
-	t.Result = string(s)
+
+	t.Result = m
 }
 
 func CheckNetworkInfo() (agent_models.NetworkInfo, error) {
