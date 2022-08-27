@@ -10,6 +10,7 @@ import (
 	"math"
 	"math/rand"
 	"net"
+	"time"
 )
 
 func CheckICMP(t *agent_models.IcmpTarget) (agent_models.IcmpData, error) {
@@ -23,8 +24,9 @@ func CheckICMP(t *agent_models.IcmpTarget) (agent_models.IcmpData, error) {
 	}
 
 	icmpData := agent_models.IcmpData{
-		Elapsed: hop.Elapsed,
-		Success: hop.Success,
+		Elapsed:   hop.Elapsed,
+		Success:   hop.Success,
+		Timestamp: time.Now(),
 	}
 
 	return icmpData, nil

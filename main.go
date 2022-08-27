@@ -41,19 +41,24 @@ func main() {
 		},
 	}
 
+	var wg sync.WaitGroup
+
+	wg.Add(1)
 	go func() {
-		TestICMP(t2, 15, 2)
+		defer wg.Done()
+		TestIcmpTargets(t2, 15, 2)
 
 		for _, st := range t2 {
-			j, err := json.Marshal(st.Result)
+			j, err := json.Marshal(st.Result.Metrics)
 			if err != nil {
 				log.Fatal(err)
 			}
 			fmt.Printf("%s\n", string(j))
 		}
 	}()
+	wg.Wait()
 
-	var wg sync.WaitGroup
+	/*var wg sync.WaitGroup
 
 	fmt.Println("Starting NetWatcher Agent...")
 
@@ -124,6 +129,6 @@ func main() {
 		fmt.Println(string(j))
 	}()
 
-	wg.Wait()
+	wg.Wait()*/
 
 }
