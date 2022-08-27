@@ -23,7 +23,7 @@ func StartScheduler() {
 		TraceTargets:     nil,
 		PingInterval:     2,
 		SpeedTestPending: true,
-		TraceInterval:    2, // minutes
+		TraceInterval:    5, // minutes
 	}
 
 	CheckConfig.TraceTargets = append(CheckConfig.TraceTargets, "1.1.1.1")
@@ -32,7 +32,7 @@ func StartScheduler() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		runIcmpCheck(&CheckConfig, 10)
+		runIcmpCheck(&CheckConfig, 2)
 	}()
 
 	wg.Add(1)
@@ -153,7 +153,7 @@ func runIcmpCheck(t *agent_models.CheckConfig, count int) {
 			for _, st := range pingTargets {
 				_, err := json.Marshal(st)
 				if err != nil {
-					log.Fatal(err)
+					log.Errorf("%s", err)
 				}
 				//fmt.Printf("%s\n", string(j))
 			}
@@ -171,6 +171,9 @@ func runIcmpCheck(t *agent_models.CheckConfig, count int) {
 		if resp.Response == 200 {
 			log.Infof("Pushed ICMP information.")
 		}
+
+		j, _ := json.Marshal(resp)
+		log.Infof("%s", j)
 	}
 }
 

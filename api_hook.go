@@ -1,12 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"github.com/sagostin/netwatcher-agent/agent_models"
 	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"os"
 )
 
@@ -21,31 +21,33 @@ front end/backend server will do the most work processing and sending alerts reg
 */
 
 func PushIcmp(t []*agent_models.IcmpTarget) (agent_models.ApiConfigResponse, error) {
-	var apiURL = os.Getenv("API_URL") + "agent/update/icmp"
+	var apiUrl = os.Getenv("API_URL") + "/agent/update/icmp"
 
 	j, err := json.Marshal(t)
 	if err != nil {
-		log.Fatal(err)
+		return agent_models.ApiConfigResponse{}, err
 	}
 
 	// TODO include authentication information
-	resp, err := http.PostForm(apiURL, url.Values{"data": {string(j)}, "id": {"this is a test"}})
+	resp, err := http.Post(apiUrl, "application/json",
+		bytes.NewBuffer(j))
 	if err != nil {
 		return agent_models.ApiConfigResponse{}, err
 	}
-	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return agent_models.ApiConfigResponse{}, err
 	}
 
-	var cfgResp agent_models.ApiConfigResponse
+	log.Warn(string(body))
+
+	cfgResp := agent_models.ApiConfigResponse{}
 	err = json.Unmarshal(body, &cfgResp)
 	if err != nil {
 		return agent_models.ApiConfigResponse{}, err
 	}
 
 	// TODO unmarshal body to api response model
-	return agent_models.ApiConfigResponse{}, nil
+	return cfgResp, nil
 }

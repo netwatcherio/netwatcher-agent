@@ -17,7 +17,8 @@ func TestIcmpTargets(t []*agent_models.IcmpTarget, count int, interval int) {
 			for i := 0; i < count; i++ {
 				icmp, err := CheckICMP(t[n])
 				if err != nil {
-					log.Fatal(err)
+					//  read ip 0.0.0.0: raw-read ip4 0.0.0.0: i/o timeout
+					log.Errorf("%s", err)
 				}
 
 				t[n].Result.Data = append(t[n].Result.Data, icmp)

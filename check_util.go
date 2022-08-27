@@ -20,7 +20,10 @@ func CheckICMP(t *agent_models.IcmpTarget) (agent_models.IcmpData, error) {
 	id := rand.Intn(math.MaxUint16) & 0xffff
 	hop, err := icmp.SendICMP(srcAddr, &ipAddr, t.Address, ttl, id, timeout, seq)
 	if err != nil {
-		return agent_models.IcmpData{}, err
+		return agent_models.IcmpData{
+			Success:   false,
+			Timestamp: time.Now(),
+		}, err
 	}
 
 	icmpData := agent_models.IcmpData{
