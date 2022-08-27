@@ -165,7 +165,7 @@ func runIcmpCheck(t *agent_models.CheckConfig, count int) {
 		resp, err := PushIcmp(pingTargets)
 		if err != nil || resp.Response == 404 {
 			// TODO save to queue
-			log.Fatalf("Failed to push ICMP information.")
+			log.Errorf("Failed to push ICMP information.")
 		}
 
 		if resp.Response == 200 {
