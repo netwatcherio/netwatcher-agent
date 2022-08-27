@@ -2,13 +2,13 @@ package main
 
 import (
 	"github.com/sagostin/netwatcher-agent/agent_models"
+	log "github.com/sirupsen/logrus"
 	"github.com/tonobo/mtr/pkg/mtr"
-	"log"
 	"sync"
 	"time"
 )
 
-func TestMtrTargets(t []*agent_models.MtrTarget) {
+func TestMtrTargets(t []*agent_models.MtrTarget, triggered bool) {
 	var wg sync.WaitGroup
 
 	wg.Add(1)
@@ -26,6 +26,7 @@ func TestMtrTargets(t []*agent_models.MtrTarget) {
 				Statistic:  res.Statistic,
 			}
 			t[n].Result.Timestamp = time.Now()
+			t[n].Result.Triggered = triggered
 		}
 	}()
 

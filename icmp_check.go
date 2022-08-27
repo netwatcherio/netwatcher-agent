@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/sagostin/netwatcher-agent/agent_models"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"sync"
 	"time"
 )
@@ -22,7 +22,7 @@ func TestIcmpTargets(t []*agent_models.IcmpTarget, count int, interval int) {
 
 				t[n].Result.Data = append(t[n].Result.Data, icmp)
 				t[n].Result.Timestamp = time.Now()
-				time.Sleep(time.Duration(interval))
+				time.Sleep(time.Duration(int(time.Second) * interval))
 			}
 		}()
 	}

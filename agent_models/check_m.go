@@ -31,6 +31,7 @@ type SpeedTestInfo struct {
 type MtrTarget struct {
 	Address string `json:"address"`
 	Result  struct {
+		Triggered bool      `json:"triggered"`
 		Mtr       mtr.MTR   `json:"mtr"`
 		Timestamp time.Time `json:"timestamp"`
 	} `json:"result"`

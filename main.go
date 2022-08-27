@@ -1,12 +1,18 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
+	"github.com/joho/godotenv"
 	_ "github.com/joho/godotenv"
 	"github.com/sagostin/netwatcher-agent/agent_models"
-	"log"
+	log "github.com/sirupsen/logrus"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
+)
+
+var (
+	CheckConfig *agent_models.CheckConfig
 )
 
 //import "os"
@@ -34,34 +40,33 @@ snmp component
 */
 
 func main() {
-	var wg sync.WaitGroup
-	fmt.Println("Starting NetWatcher Agent...")
-
-	// ICMP TARGET EXAMPLE
-
-	var t2 = []*agent_models.IcmpTarget{
-		{
-			Address: "1.1.1.1",
-		},
+	var err error
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		TestIcmpTargets(t2, 15, 2)
+	log.SetFormatter(&log.TextFormatter{})
 
-		for _, st := range t2 {
-			j, err := json.Marshal(st)
-			if err != nil {
-				log.Fatal(err)
-			}
-			fmt.Printf("%s\n", string(j))
-		}
+	godotenv.Load()
+
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGTERM)
+	signal.Notify(signals, syscall.SIGKILL)
+	go func() {
+		s := <-signals
+		log.Fatal("Received Signal: %s", s)
+		shutdown()
+		os.Exit(1)
 	}()
+
+	var wg sync.WaitGroup
+	log.Infof("Starting NetWatcher Agent...")
+
+	StartScheduler()
 
 	// MTR TARGET EXAMPLE
 
-	var t = []*agent_models.MtrTarget{
+	/*var t = []*agent_models.MtrTarget{
 		{
 			Address: "1.1.1.1",
 		},
@@ -70,35 +75,8 @@ func main() {
 		},
 	}
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		TestMtrTargets(t)
-		for _, st := range t {
-			j, err := json.Marshal(st)
-			if err != nil {
-				log.Fatal(err)
-			}
-			fmt.Printf("%s\n", string(j))
-		}
-	}()
 
-	// SPEED TEST
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		speedInfo, err := RunSpeedTest()
 
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		j, err := json.Marshal(speedInfo)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Println(string(j))
-	}()
 
 	// NETWORK INFO
 	wg.Add(1)
@@ -115,7 +93,11 @@ func main() {
 			log.Fatal(err)
 		}
 		fmt.Println(string(j))
-	}()
+	}()*/
 
 	wg.Wait()
+}
+
+func shutdown() {
+	log.Fatal("Shutting down NetWatcher Agent...")
 }
