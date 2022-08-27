@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/joho/godotenv"
-	_ "github.com/joho/godotenv"
 	"github.com/sagostin/netwatcher-agent/agent_models"
 	log "github.com/sirupsen/logrus"
 	"os"
@@ -64,36 +63,23 @@ func main() {
 
 	StartScheduler()
 
-	// MTR TARGET EXAMPLE
+	/*
+		// NETWORK INFO
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			networkInfo, err := CheckNetworkInfo()
 
-	/*var t = []*agent_models.MtrTarget{
-		{
-			Address: "1.1.1.1",
-		},
-		{
-			Address: "8.8.8.8",
-		},
-	}
+			if err != nil {
+				log.Fatalln(err)
+			}
 
-
-
-
-	// NETWORK INFO
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		networkInfo, err := CheckNetworkInfo()
-
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		j, err := json.Marshal(networkInfo)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Println(string(j))
-	}()*/
+			j, err := json.Marshal(networkInfo)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Println(string(j))
+		}()*/
 
 	wg.Wait()
 }

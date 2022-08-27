@@ -20,27 +20,32 @@ front end/backend server will do the most work processing and sending alerts reg
 
 */
 
-func PushIcmp(t []*agent_models.IcmpTarget) error {
-	var apiURL = os.Getenv("API_URL") + "update/icmp"
+func PushIcmp(t []*agent_models.IcmpTarget) (agent_models.ApiConfigResponse, error) {
+	var apiURL = os.Getenv("API_URL") + "agent/update/icmp"
 
 	j, err := json.Marshal(t)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	// TODO include authentication information
 	resp, err := http.PostForm(apiURL, url.Values{"data": {string(j)}, "id": {"this is a test"}})
 	if err != nil {
-		return err
+		return agent_models.ApiConfigResponse{}, err
 	}
-
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return agent_models.ApiConfigResponse{}, err
+	}
+
+	var cfgResp agent_models.ApiConfigResponse
+	err = json.Unmarshal(body, &cfgResp)
+	if err != nil {
+		return agent_models.ApiConfigResponse{}, err
 	}
 
 	// TODO unmarshal body to api response model
-
-	return err
+	return agent_models.ApiConfigResponse{}, nil
 }
