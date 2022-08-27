@@ -31,7 +31,7 @@ type SpeedTestInfo struct {
 type MtrTarget struct {
 	Address string `json:"address"`
 	Result  struct {
-		Mtr       *mtr.MTR  `json:"mtr"`
+		Mtr       mtr.MTR   `json:"mtr"`
 		Timestamp time.Time `json:"timestamp"`
 	} `json:"result"`
 }
@@ -39,13 +39,13 @@ type MtrTarget struct {
 type IcmpTarget struct {
 	Address string `json:"address"`
 	Result  struct {
-		Timestamp time.Time `json:"timestamp"`
-		Data      []IcmpData
+		Timestamp time.Time  `json:"timestamp"`
+		Data      []IcmpData `json:"data"`
 		Metrics   struct {
-			Average time.Duration `json:"average"`
-			Max     time.Duration `json:"max"`
-			Min     time.Duration `json:"min"`
-			Loss    int           `json:"loss"`
+			Average     time.Duration `json:"average"`
+			Max         time.Duration `json:"max"`
+			Min         time.Duration `json:"min"`
+			LossPercent int           `json:"loss_percent"`
 		} `json:"metrics"`
 	} `json:"result"`
 }

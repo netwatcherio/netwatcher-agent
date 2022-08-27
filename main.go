@@ -35,13 +35,13 @@ snmp component
 
 func main() {
 
+	var wg sync.WaitGroup
+
 	var t2 = []*agent_models.IcmpTarget{
 		{
 			Address: "1.1.1.1",
 		},
 	}
-
-	var wg sync.WaitGroup
 
 	wg.Add(1)
 	go func() {
@@ -49,14 +49,35 @@ func main() {
 		TestIcmpTargets(t2, 15, 2)
 
 		for _, st := range t2 {
-			j, err := json.Marshal(st.Result.Metrics)
+			j, err := json.Marshal(st)
 			if err != nil {
 				log.Fatal(err)
 			}
 			fmt.Printf("%s\n", string(j))
 		}
 	}()
-	wg.Wait()
+
+	var t = []*agent_models.MtrTarget{
+		{
+			Address: "1.1.1.1",
+		},
+		{
+			Address: "8.8.8.8",
+		},
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		TestMtrTargets(t)
+		for _, st := range t {
+			j, err := json.Marshal(st)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("%s\n", string(j))
+		}
+	}()
 
 	/*var wg sync.WaitGroup
 
@@ -130,5 +151,5 @@ func main() {
 	}()
 
 	wg.Wait()*/
-
+	wg.Wait()
 }

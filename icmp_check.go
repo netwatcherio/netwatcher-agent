@@ -73,13 +73,14 @@ func calculateMetrics(t []*agent_models.IcmpTarget) {
 		}()
 		go func() {
 			defer wg.Done()
-			var loss = 0
+			var lossPercent = 0
 			for _, m := range t[n].Result.Data {
 				if !m.Success {
-					loss++
+					lossPercent++
 				}
 			}
-			t[n].Result.Metrics.Loss = loss
+			lossPercent = lossPercent / len(t[n].Result.Data)
+			t[n].Result.Metrics.LossPercent = lossPercent
 		}()
 	}
 	wg.Wait()
