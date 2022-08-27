@@ -16,7 +16,8 @@ type NetworkInfo struct {
 	Long             string `json:"long"`
 }
 
-// log how long it took and then timestamp of when it was started and finished
+// SpeedTestInfo
+//TODO log how long it took and then timestamp of when it was started and finished
 type SpeedTestInfo struct {
 	Latency time.Duration `json:"latency"`
 	DLSpeed float64       `json:"dl_speed"`
@@ -26,13 +27,27 @@ type SpeedTestInfo struct {
 }
 
 type MtrTarget struct {
-	Address string   `json:"address"`
-	Result  *mtr.MTR `json:"result"`
+	Address string `json:"address"`
+	Result  struct {
+		Mtr *mtr.MTR `json:"mtr"`
+	} `json:"result"`
 }
 
 type IcmpTarget struct {
 	Address string `json:"address"`
 	Result  struct {
-		ElapsedMilliseconds int64 `json:"elapsed_ms"`
+		Data    []IcmpData
+		Metrics struct {
+			Average time.Duration `json:"average"`
+			Max     time.Duration `json:"max"`
+			Min     time.Duration `json:"min"`
+			Loss    int           `json:"loss"`
+		}
 	} `json:"result"`
+}
+
+type IcmpData struct {
+	Elapsed   time.Duration `json:"elapsed"`
+	Success   bool          `json:"success"`
+	Timestamp time.Time     `json:"timestamp"`
 }

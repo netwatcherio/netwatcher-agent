@@ -35,6 +35,24 @@ snmp component
 
 func main() {
 
+	var t2 = []*agent_models.IcmpTarget{
+		{
+			Address: "1.1.1.1",
+		},
+	}
+
+	go func() {
+		TestICMP(t2, 15, 2)
+
+		for _, st := range t2 {
+			j, err := json.Marshal(st.Result)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("%s\n", string(j))
+		}
+	}()
+
 	var wg sync.WaitGroup
 
 	fmt.Println("Starting NetWatcher Agent...")
@@ -43,46 +61,36 @@ func main() {
 		{
 			Address: "1.1.1.1",
 		},
-	}
-
-	for _, st := range t {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			CheckMTR(&st, 5)
-		}()
-	}
-
-	wg.Wait()
-	for s := range t {
-		j, err := json.Marshal(t[s].Result)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("Hop info %s %s\n", t[s].Address, string(j))
-	}
-
-	var t2 = []agent_models.IcmpTarget{
 		{
-			Address: "1.1.1.1",
+			Address: "8.8.8.8",
 		},
 	}
 
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for n, st := range t {
+			res, err := CheckMTR(&st, 5)
+			if err != nil {
+				log.Fatal(err)
+			}
+			t[n].Result = res
+		}
+	}()
+
 	wg.Wait()
 
-	for _, st := range t2 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			CheckICMP(&st)
-			fmt.Printf("Time for %s - %vms \n", st.Address, st.Result.ElapsedMilliseconds)
-		}()
+	for n := range t {
+		j, err := json.Marshal(t[n].Result)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("%s\n", string(j))
 	}
 
 	wg.Wait()
 
 	wg.Add(1)
-	fmt.Println("Running speed test...\n")
 	go func() {
 		defer wg.Done()
 		speedInfo, err := RunSpeedTest()
@@ -91,13 +99,16 @@ func main() {
 			log.Fatalln(err)
 		}
 
-		fmt.Printf("Speed %fmbps - %fmbps \n%s %s\n", speedInfo.ULSpeed, speedInfo.DLSpeed, speedInfo.Server, speedInfo.Host)
+		j, err := json.Marshal(speedInfo)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(string(j))
 	}()
 
 	wg.Wait()
 
 	wg.Add(1)
-	fmt.Println("Getting network information...\n")
 	go func() {
 		defer wg.Done()
 		networkInfo, err := CheckNetworkInfo()
@@ -106,8 +117,11 @@ func main() {
 			log.Fatalln(err)
 		}
 
-		fmt.Printf("Local Subnet: %s, Local Gateway: %s, ISP: %s, WAN IP: %s",
-			networkInfo.LocalSubnet, networkInfo.DefaultGateway, networkInfo.InternetProvider, networkInfo.PublicAddress)
+		j, err := json.Marshal(networkInfo)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(string(j))
 	}()
 
 	wg.Wait()
