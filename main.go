@@ -34,8 +34,10 @@ snmp component
 */
 
 func main() {
-
 	var wg sync.WaitGroup
+	fmt.Println("Starting NetWatcher Agent...")
+
+	// ICMP TARGET EXAMPLE
 
 	var t2 = []*agent_models.IcmpTarget{
 		{
@@ -56,6 +58,8 @@ func main() {
 			fmt.Printf("%s\n", string(j))
 		}
 	}()
+
+	// MTR TARGET EXAMPLE
 
 	var t = []*agent_models.MtrTarget{
 		{
@@ -79,43 +83,7 @@ func main() {
 		}
 	}()
 
-	/*var wg sync.WaitGroup
-
-	fmt.Println("Starting NetWatcher Agent...")
-
-	var t = []agent_models.MtrTarget{
-		{
-			Address: "1.1.1.1",
-		},
-		{
-			Address: "8.8.8.8",
-		},
-	}
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for n, st := range t {
-			res, err := CheckMTR(&st, 5)
-			if err != nil {
-				log.Fatal(err)
-			}
-			t[n].Result = res
-		}
-	}()
-
-	wg.Wait()
-
-	for n := range t {
-		j, err := json.Marshal(t[n].Result)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("%s\n", string(j))
-	}
-
-	wg.Wait()
-
+	// SPEED TEST
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -132,8 +100,7 @@ func main() {
 		fmt.Println(string(j))
 	}()
 
-	wg.Wait()
-
+	// NETWORK INFO
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -150,6 +117,5 @@ func main() {
 		fmt.Println(string(j))
 	}()
 
-	wg.Wait()*/
 	wg.Wait()
 }
