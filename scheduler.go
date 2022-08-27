@@ -162,6 +162,15 @@ func runIcmpCheck(t *agent_models.CheckConfig, count int) {
 		// Upload to server, check if it fails or not,
 		// then if it does, save to temporary list
 		// for later upload
+		resp, err := PushIcmp(pingTargets)
+		if err != nil || resp.Response == 404 {
+			// TODO save to queue
+			log.Fatalf("Failed to push ICMP information.")
+		}
+
+		if resp.Response == 200 {
+			log.Infof("Pushed ICMP information.")
+		}
 	}
 }
 
