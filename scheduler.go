@@ -50,6 +50,8 @@ func StartScheduler() {
 		runNetworkQuery()
 	}()
 
+	//TODO add a heartbeat function to keep track of if the machine is online, etc.
+
 	wg.Wait()
 }
 
@@ -77,11 +79,11 @@ func runNetworkQuery() {
 		resp, err := PostNetworkInfo(nInfo)
 		if err != nil || resp.Response == 404 {
 			// TODO save to queue
-			log.Errorf("Failed to push MTR information.")
+			log.Errorf("Failed to push Network Information information.")
 		}
 
 		if resp.Response == 200 {
-			log.Infof("Pushed MTR information.")
+			log.Infof("Pushed Network information.")
 		}
 
 		/*j, _ := json.Marshal(resp)

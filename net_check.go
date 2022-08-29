@@ -5,6 +5,7 @@ import (
 	"github.com/jackpal/gateway"
 	"github.com/sagostin/netwatcher-agent/agent_models"
 	"github.com/showwin/speedtest-go/speedtest"
+	"time"
 )
 
 func RunSpeedTest() (*agent_models.SpeedTestInfo, error) {
@@ -27,11 +28,12 @@ func RunSpeedTest() (*agent_models.SpeedTestInfo, error) {
 		s.UploadTest(false)
 
 		return &agent_models.SpeedTestInfo{
-			Latency: s.Latency,
-			DLSpeed: s.DLSpeed,
-			ULSpeed: s.ULSpeed,
-			Server:  s.Name,
-			Host:    s.Host,
+			Latency:   s.Latency,
+			DLSpeed:   s.DLSpeed,
+			ULSpeed:   s.ULSpeed,
+			Server:    s.Name,
+			Host:      s.Host,
+			Timestamp: time.Now(),
 		}, nil
 	}
 
@@ -55,11 +57,12 @@ func CheckNetworkInfo() (*agent_models.NetworkInfo, error) {
 	}
 
 	return &agent_models.NetworkInfo{
-		LocalSubnet:      localInterface.String(),
+		LocalAddress:     localInterface.String(),
 		PublicAddress:    user.IP,
 		InternetProvider: user.Isp,
 		Lat:              user.Lat,
 		Long:             user.Lon,
 		DefaultGateway:   localGateway.String(),
+		Timestamp:        time.Now(),
 	}, nil
 }

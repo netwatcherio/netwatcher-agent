@@ -8,9 +8,9 @@ import (
 // NetworkInfo network info such as subnet, local network, public ip,
 // and isp, and lat and long
 type NetworkInfo struct {
-	LocalSubnet      string    `json:"local_subnet"`
-	PublicAddress    string    `json:"public_address"`
+	LocalAddress     string    `json:"local_address"`
 	DefaultGateway   string    `json:"default_gateway"`
+	PublicAddress    string    `json:"public_address"`
 	InternetProvider string    `json:"internet_provider"`
 	Lat              string    `json:"lat"`
 	Long             string    `json:"long"`
