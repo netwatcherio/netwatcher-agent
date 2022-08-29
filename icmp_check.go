@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+// TODO DSCP Tags? https://github.com/rclone/rclone/issues/755
+
 func CheckICMP(t *agent_models.IcmpTarget) (agent_models.IcmpData, error) {
 	ipAddr := net.IPAddr{IP: net.ParseIP(t.Address)}
 
