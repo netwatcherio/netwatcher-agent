@@ -16,7 +16,7 @@ push to servers every 2 minutes with data collected (configurable on frontend?)
 front end/backend server will do the most work processing and sending alerts regarding sites and such
 */
 
-func PostNetworkInfo(t agent_models.NetworkInfo) (agent_models.ApiConfigResponse, error) {
+func PostNetworkInfo(t *agent_models.NetworkInfo) (agent_models.ApiConfigResponse, error) {
 	j, err := json.Marshal(t)
 	if err != nil {
 		return agent_models.ApiConfigResponse{}, err
@@ -26,7 +26,7 @@ func PostNetworkInfo(t agent_models.NetworkInfo) (agent_models.ApiConfigResponse
 	return resp, err
 }
 
-func PostSpeedTest(t agent_models.SpeedTestInfo) (agent_models.ApiConfigResponse, error) {
+func PostSpeedTest(t *agent_models.SpeedTestInfo) (agent_models.ApiConfigResponse, error) {
 	j, err := json.Marshal(t)
 	if err != nil {
 		return agent_models.ApiConfigResponse{}, err

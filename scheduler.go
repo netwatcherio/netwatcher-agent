@@ -44,8 +44,51 @@ func StartScheduler() {
 		defer wg.Done()
 		runMtrCheck(&CheckConfig)
 	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		runNetworkQuery()
+	}()
 
 	wg.Wait()
+}
+
+func runNetworkQuery() {
+	var wg sync.WaitGroup
+
+	var nInfo *agent_models.NetworkInfo
+
+	for true {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			log.Infof("Running Network Info query...")
+
+			networkInfo, err := CheckNetworkInfo()
+			if err != nil {
+				log.Errorf("%s", err)
+			}
+			nInfo = networkInfo
+		}()
+		wg.Wait()
+		// Upload to server, check if it fails or not,
+		// then if it does, save to temporary list
+		// for later upload
+		resp, err := PostNetworkInfo(nInfo)
+		if err != nil || resp.Response == 404 {
+			// TODO save to queue
+			log.Errorf("Failed to push MTR information.")
+		}
+
+		if resp.Response == 200 {
+			log.Infof("Pushed MTR information.")
+		}
+
+		/*j, _ := json.Marshal(resp)
+		log.Infof("%s", j)*/
+
+		time.Sleep(time.Duration(int(time.Minute) * 30))
+	}
 }
 
 func runMtrCheck(t *agent_models.CheckConfig) {
@@ -90,8 +133,8 @@ func runMtrCheck(t *agent_models.CheckConfig) {
 			log.Infof("Pushed MTR information.")
 		}
 
-		j, _ := json.Marshal(resp)
-		log.Infof("%s", j)
+		/*j, _ := json.Marshal(resp)
+		log.Infof("%s", j)*/
 
 		time.Sleep(time.Duration(int(time.Minute) * t.TraceInterval))
 	}
@@ -170,7 +213,7 @@ func runIcmpCheck(t *agent_models.CheckConfig, count int) {
 			log.Infof("Pushed ICMP information.")
 		}
 
-		j, _ := json.Marshal(resp)
-		log.Infof("%s", j)
+		/*j, _ := json.Marshal(resp)
+		log.Infof("%s", j)*/
 	}
 }
