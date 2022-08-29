@@ -7,7 +7,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
-	"os"
 )
 
 /*
@@ -20,17 +19,30 @@ front end/backend server will do the most work processing and sending alerts reg
 
 */
 
-func PushIcmp(t []*agent_models.IcmpTarget) (agent_models.ApiConfigResponse, error) {
-	var apiUrl = os.Getenv("API_URL") + "/agent/update/icmp"
-
+func PostMtr(t []*agent_models.MtrTarget) (agent_models.ApiConfigResponse, error) {
 	j, err := json.Marshal(t)
 	if err != nil {
 		return agent_models.ApiConfigResponse{}, err
 	}
 
+	resp, err := postData(j, "/v1/agent/update/mtr")
+	return resp, err
+}
+
+func PostIcmp(t []*agent_models.IcmpTarget) (agent_models.ApiConfigResponse, error) {
+	j, err := json.Marshal(t)
+	if err != nil {
+		return agent_models.ApiConfigResponse{}, err
+	}
+
+	resp, err := postData(j, "/v1/agent/update/icmp")
+	return resp, err
+}
+
+func postData(b []byte, apiPath string) (agent_models.ApiConfigResponse, error) {
 	// TODO include authentication information
-	resp, err := http.Post(apiUrl, "application/json",
-		bytes.NewBuffer(j))
+	resp, err := http.Post(ApiUrl+apiPath, "application/json",
+		bytes.NewBuffer(b))
 	if err != nil {
 		return agent_models.ApiConfigResponse{}, err
 	}

@@ -12,6 +12,7 @@ import (
 
 var (
 	CheckConfig *agent_models.CheckConfig
+	ApiUrl      string
 )
 
 func main() {
@@ -33,6 +34,8 @@ func main() {
 		shutdown()
 		os.Exit(1)
 	}()
+
+	ApiUrl = os.Getenv("API_URL")
 
 	var wg sync.WaitGroup
 	log.Infof("Starting NetWatcher Agent...")

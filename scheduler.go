@@ -95,6 +95,19 @@ func runMtrCheck(t *agent_models.CheckConfig) {
 		// Upload to server, check if it fails or not,
 		// then if it does, save to temporary list
 		// for later upload
+		resp, err := PostMtr(mtrTargets)
+		if err != nil || resp.Response == 404 {
+			// TODO save to queue
+			log.Errorf("Failed to push MTR information.")
+		}
+
+		if resp.Response == 200 {
+			log.Infof("Pushed MTR information.")
+		}
+
+		j, _ := json.Marshal(resp)
+		log.Infof("%s", j)
+
 		time.Sleep(time.Duration(int(time.Minute) * t.TraceInterval))
 	}
 }
@@ -162,7 +175,7 @@ func runIcmpCheck(t *agent_models.CheckConfig, count int) {
 		// Upload to server, check if it fails or not,
 		// then if it does, save to temporary list
 		// for later upload
-		resp, err := PushIcmp(pingTargets)
+		resp, err := PostIcmp(pingTargets)
 		if err != nil || resp.Response == 404 {
 			// TODO save to queue
 			log.Errorf("Failed to push ICMP information.")
