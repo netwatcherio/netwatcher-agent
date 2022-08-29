@@ -43,10 +43,12 @@ type IcmpTarget struct {
 		Timestamp time.Time  `json:"timestamp"`
 		Data      []IcmpData `json:"data"`
 		Metrics   struct {
-			Average     time.Duration `json:"average"`
-			Max         time.Duration `json:"max"`
-			Min         time.Duration `json:"min"`
-			LossPercent int           `json:"loss_percent"`
+			LatencyAverage time.Duration `json:"latency_average"`
+			LatencyMax     time.Duration `json:"latency_max"`
+			LatencyMin     time.Duration `json:"latency_min"`
+			LossPercent    int           `json:"loss_percent"`
+			JitterAverage  time.Duration `json:"jitter_average"`
+			JitterMax      time.Duration `json:"jitter_max"`
 		} `json:"metrics"`
 	} `json:"result"`
 }

@@ -34,13 +34,11 @@ func StartScheduler() {
 		defer wg.Done()
 		runIcmpCheck(&CheckConfig, 2)
 	}()
-
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		runSpeedTestCheck(&CheckConfig)
 	}()
-
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -49,19 +47,6 @@ func StartScheduler() {
 
 	wg.Wait()
 }
-
-/*wg.Add(1)
-go func() {
-	defer wg.Done()
-	TestMtrTargets(t)
-	for _, st := range t {
-		j, err := json.Marshal(st)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("%s\n", string(j))
-	}
-}()*/
 
 func runMtrCheck(t *agent_models.CheckConfig) {
 	var wg sync.WaitGroup
@@ -188,8 +173,4 @@ func runIcmpCheck(t *agent_models.CheckConfig, count int) {
 		j, _ := json.Marshal(resp)
 		log.Infof("%s", j)
 	}
-}
-
-func pullConfiguration() {
-
 }

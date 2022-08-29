@@ -32,3 +32,20 @@ func TestMtrTargets(t []*agent_models.MtrTarget, triggered bool) {
 
 	wg.Wait()
 }
+
+func CheckMTR(t *agent_models.MtrTarget, count int) (*mtr.MTR, error) {
+	m, ch, err := mtr.NewMTR(t.Address, srcAddr, timeout, interval, hopSleep,
+		maxHops, maxUnknownHops, ringBufferSize, ptrLookup)
+	if err != nil {
+		return nil, err
+	}
+
+	go func(ch chan struct{}) {
+		for {
+			<-ch
+		}
+	}(ch)
+	m.Run(ch, count)
+
+	return m, nil
+}
