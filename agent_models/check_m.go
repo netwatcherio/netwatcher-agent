@@ -31,18 +31,20 @@ type SpeedTestInfo struct {
 type MtrTarget struct {
 	Address string `json:"address"`
 	Result  struct {
-		Triggered bool      `json:"triggered"`
-		Mtr       mtr.MTR   `json:"mtr"`
-		Timestamp time.Time `json:"timestamp"`
+		Triggered      bool      `json:"triggered"`
+		Mtr            mtr.MTR   `json:"mtr"`
+		StartTimestamp time.Time `json:"start_timestamp"`
+		StopTimestamp  time.Time `json:"stop_timestamp"`
 	} `json:"result"`
 }
 
 type IcmpTarget struct {
 	Address string `json:"address"`
 	Result  struct {
-		Timestamp time.Time  `json:"timestamp"`
-		Data      []IcmpData `json:"data"`
-		Metrics   struct {
+		StartTimestamp time.Time  `json:"start_timestamp"`
+		StopTimestamp  time.Time  `json:"stop_timestamp"`
+		Data           []IcmpData `json:"data"`
+		Metrics        struct {
 			LatencyAverage time.Duration `json:"latency_average"`
 			LatencyMax     time.Duration `json:"latency_max"`
 			LatencyMin     time.Duration `json:"latency_min"`

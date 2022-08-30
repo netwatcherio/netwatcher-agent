@@ -25,7 +25,7 @@ func TestMtrTargets(t []*agent_models.MtrTarget, triggered bool) {
 				Address:    res.Address,
 				Statistic:  res.Statistic,
 			}
-			t[n].Result.Timestamp = time.Now()
+			t[n].Result.StopTimestamp = time.Now()
 			t[n].Result.Triggered = triggered
 		}
 	}()

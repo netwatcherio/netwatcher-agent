@@ -103,6 +103,7 @@ func runMtrCheck(t *agent_models.CheckConfig) {
 			mtrTargets = append(mtrTargets, &agent_models.MtrTarget{
 				Address: t.TraceTargets[n],
 			})
+			mtrTargets[n].Result.StartTimestamp = time.Now()
 		}
 		wg.Add(1)
 		go func() {
@@ -183,6 +184,8 @@ func runIcmpCheck(t *agent_models.CheckConfig, count int) {
 			pingTargets = append(pingTargets, &agent_models.IcmpTarget{
 				Address: t.PingTargets[n],
 			})
+
+			pingTargets[n].Result.StartTimestamp = time.Now()
 		}
 		wg.Add(1)
 		go func() {

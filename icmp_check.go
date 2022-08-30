@@ -50,7 +50,7 @@ func TestIcmpTargets(t []*agent_models.IcmpTarget, count int, interval int) {
 				}
 
 				t[n].Result.Data = append(t[n].Result.Data, icmp)
-				t[n].Result.Timestamp = time.Now()
+				t[n].Result.StopTimestamp = time.Now()
 				time.Sleep(time.Duration(int(time.Second) * interval))
 			}
 		}()
