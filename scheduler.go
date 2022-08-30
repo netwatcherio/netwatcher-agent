@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/sagostin/netwatcher-agent/agent_models"
 	log "github.com/sirupsen/logrus"
 	"sync"
@@ -153,20 +152,19 @@ func runSpeedTestCheck(config *agent_models.CheckConfig) {
 				defer wg.Done()
 				log.Infof("Running SpeedTest...")
 				speedInfo, err := RunSpeedTest()
-
 				if err != nil {
 					log.Fatalln(err)
 				}
+				// TODO verify it was sent other then save to queue if not sent
+				PostSpeedTest(speedInfo)
 
-				j, err := json.Marshal(speedInfo)
+				/*j, err := json.Marshal(speedInfo)
 				if err != nil {
 					log.Fatal(err)
 				}
-				fmt.Println(string(j))
+				fmt.Println(string(j))*/
 			}()
 			wg.Wait()
-			// TODO then upload and verify it worked, otherwise save and process later
-
 			config.SpeedTestPending = false
 			// sleep
 			time.Sleep(time.Duration(int(time.Second) * 300))
