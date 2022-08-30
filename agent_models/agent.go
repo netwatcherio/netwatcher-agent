@@ -3,7 +3,7 @@ package agent_models
 // eventally add more types of targets checks (SNMP, HTTP, etc.)
 // nmap???
 
-type CheckConfig struct {
+type AgentConfig struct {
 	PingTargets      []string `json:"ping_targets"`
 	TraceTargets     []string `json:"trace_targets"`
 	PingInterval     int      `json:"ping_interval"` // seconds

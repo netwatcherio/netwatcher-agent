@@ -142,7 +142,9 @@ func calculateMetrics(t []*agent_models.IcmpTarget) {
 				}
 			}
 
-			jitterAvg = jitterAvg / jitterC
+			if jitterC > 0 && jitterAvg > 0 {
+				jitterAvg = jitterAvg / jitterC
+			}
 			t[n].Result.Metrics.JitterAverage = time.Duration(jitterAvg)
 		}()
 		// TODO jitter max, and jitter 95 percentile

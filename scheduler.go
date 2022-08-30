@@ -17,7 +17,7 @@ func StartScheduler() {
 	*/
 
 	// rewrite to pull using api get request
-	CheckConfig := agent_models.CheckConfig{
+	CheckConfig := agent_models.AgentConfig{
 		PingTargets:      nil,
 		TraceTargets:     nil,
 		PingInterval:     2,
@@ -92,7 +92,7 @@ func runNetworkQuery() {
 	}
 }
 
-func runMtrCheck(t *agent_models.CheckConfig) {
+func runMtrCheck(t *agent_models.AgentConfig) {
 	var wg sync.WaitGroup
 
 	for true {
@@ -142,7 +142,7 @@ func runMtrCheck(t *agent_models.CheckConfig) {
 	}
 }
 
-func runSpeedTestCheck(config *agent_models.CheckConfig) {
+func runSpeedTestCheck(config *agent_models.AgentConfig) {
 	var wg sync.WaitGroup
 
 	for true {
@@ -172,7 +172,7 @@ func runSpeedTestCheck(config *agent_models.CheckConfig) {
 	}
 }
 
-func runIcmpCheck(t *agent_models.CheckConfig, count int) {
+func runIcmpCheck(t *agent_models.AgentConfig, count int) {
 	var wg sync.WaitGroup
 
 	for true {

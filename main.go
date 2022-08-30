@@ -24,7 +24,7 @@ var (
 )
 
 var (
-	CheckConfig *agent_models.CheckConfig
+	CheckConfig *agent_models.AgentConfig
 	ApiUrl      string
 )
 
