@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"github.com/sagostin/netwatcher-agent/agent_models"
 	"io/ioutil"
 	"net/http"
@@ -15,6 +16,34 @@ poll configuration update every 5 minutes
 push to servers every 2 minutes with data collected (configurable on frontend?)
 front end/backend server will do the most work processing and sending alerts regarding sites and such
 */
+
+func GetConfig(apiConfig *agent_models.AgentConfig) error {
+	// TODO include authentication information
+	resp, err := http.Get(ApiUrl + "/v1/agent/config")
+	if err != nil {
+		return err
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	var apiCfg *agent_models.ApiConfigResponse
+	err = json.Unmarshal(body, &apiCfg)
+	if err != nil {
+		return err
+	}
+
+	if apiCfg.Response == 200 {
+		apiConfig = &apiCfg.Config
+		return nil
+	} else {
+		return errors.New("unable to get config")
+	}
+
+	// TODO unmarshal body to api response modes
+}
 
 func PostNetworkInfo(t *agent_models.NetworkInfo) (agent_models.ApiResponse, error) {
 	j, err := json.Marshal(t)

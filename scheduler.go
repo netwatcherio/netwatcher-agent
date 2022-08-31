@@ -8,40 +8,27 @@ import (
 	"time"
 )
 
-func StartScheduler() {
+func StartScheduler(agentConfig *agent_models.AgentConfig) {
 	var wg sync.WaitGroup
 	/*
 	 1. update config x minutes and first start using apikey
 	 2. make go routines to run mtr checks
 	 3. make go routines (every 5 seconds?) to check icmp
 	*/
-
-	// rewrite to pull using api get request
-	CheckConfig := agent_models.AgentConfig{
-		PingTargets:      nil,
-		TraceTargets:     nil,
-		PingInterval:     2,
-		SpeedTestPending: true,
-		TraceInterval:    5, // minutes
-	}
-
-	CheckConfig.TraceTargets = append(CheckConfig.TraceTargets, "1.1.1.1")
-	CheckConfig.PingTargets = append(CheckConfig.PingTargets, "1.1.1.1")
-
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		runIcmpCheck(&CheckConfig, 2)
+		runIcmpCheck(agentConfig, 2)
 	}()
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		runSpeedTestCheck(&CheckConfig)
+		runSpeedTestCheck(agentConfig)
 	}()
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		runMtrCheck(&CheckConfig)
+		runMtrCheck(agentConfig)
 	}()
 	wg.Add(1)
 	go func() {

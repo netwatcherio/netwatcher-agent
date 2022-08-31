@@ -24,8 +24,7 @@ var (
 )
 
 var (
-	CheckConfig *agent_models.AgentConfig
-	ApiUrl      string
+	ApiUrl string
 )
 
 func main() {
@@ -53,9 +52,34 @@ func main() {
 	var wg sync.WaitGroup
 	log.Infof("Starting NetWatcher Agent...")
 
-	StartScheduler()
+	var agentConfig *agent_models.AgentConfig
+
+	/*agentConfig.TraceTargets = append(agentConfig.TraceTargets, "1.1.1.1")
+	agentConfig.PingTargets = append(agentConfig.PingTargets, "1.1.1.1")*/
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		runConfigCheck(agentConfig)
+	}()
+	wg.Wait()
+	StartScheduler(agentConfig)
 
 	wg.Wait()
+}
+
+func runConfigCheck(t *agent_models.AgentConfig) {
+	for {
+		go func() {
+			err := GetConfig(t)
+			if err != nil {
+				log.Errorf("Unable to config in scheduler")
+				time.Sleep(2)
+			} else {
+				log.Infof("pulled config from remote")
+			}
+		}()
+	}
 }
 
 func shutdown() {

@@ -8,6 +8,7 @@ type AgentConfig struct {
 	TraceTargets     []string `json:"trace_targets"`
 	PingInterval     int      `json:"ping_interval"` // seconds
 	SpeedTestPending bool     `json:"speedtest_pending"`
+	ConfigPending    bool     `json:config_pending`
 	TraceInterval    int      `json:"trace_interval"` // minutes
 }
 
