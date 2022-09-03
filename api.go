@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"time"
 )
 
 /*
@@ -50,9 +51,10 @@ func GetConfig() (*agent_models.AgentConfig, error) {
 
 func PostNetworkInfo(t *agent_models.NetworkInfo) (agent_models.ApiResponse, error) {
 	verifyData := agent_models.ApiPushData{
-		Pin:  os.Getenv("PIN"),
-		Hash: os.Getenv("HASH"),
-		Data: t,
+		Pin:       os.Getenv("PIN"),
+		Hash:      os.Getenv("HASH"),
+		Data:      t,
+		Timestamp: time.Now(),
 	}
 
 	j, err := json.Marshal(verifyData)
@@ -66,9 +68,10 @@ func PostNetworkInfo(t *agent_models.NetworkInfo) (agent_models.ApiResponse, err
 
 func PostSpeedTest(t *agent_models.SpeedTestInfo) (agent_models.ApiResponse, error) {
 	verifyData := agent_models.ApiPushData{
-		Pin:  os.Getenv("PIN"),
-		Hash: os.Getenv("HASH"),
-		Data: t,
+		Pin:       os.Getenv("PIN"),
+		Hash:      os.Getenv("HASH"),
+		Data:      t,
+		Timestamp: time.Now(),
 	}
 
 	j, err := json.Marshal(verifyData)
@@ -82,9 +85,10 @@ func PostSpeedTest(t *agent_models.SpeedTestInfo) (agent_models.ApiResponse, err
 
 func PostMtr(t []*agent_models.MtrTarget) (agent_models.ApiResponse, error) {
 	verifyData := agent_models.ApiPushData{
-		Pin:  os.Getenv("PIN"),
-		Hash: os.Getenv("HASH"),
-		Data: t,
+		Pin:       os.Getenv("PIN"),
+		Hash:      os.Getenv("HASH"),
+		Data:      t,
+		Timestamp: time.Now(),
 	}
 
 	j, err := json.Marshal(verifyData)
@@ -95,9 +99,10 @@ func PostMtr(t []*agent_models.MtrTarget) (agent_models.ApiResponse, error) {
 
 func PostIcmp(t []*agent_models.IcmpTarget) (agent_models.ApiResponse, error) {
 	verifyData := agent_models.ApiPushData{
-		Pin:  os.Getenv("PIN"),
-		Hash: os.Getenv("HASH"),
-		Data: t,
+		Pin:       os.Getenv("PIN"),
+		Hash:      os.Getenv("HASH"),
+		Data:      t,
+		Timestamp: time.Now(),
 	}
 
 	j, err := json.Marshal(verifyData)

@@ -18,16 +18,14 @@ func StartScheduler(agentConfig *agent_models.AgentConfig) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		var received = false
-		for !received {
+		for {
+			time.Sleep(time.Minute * 5)
 			conf, err := GetConfig()
 			if err == nil {
-				received = true
 				agentConfig = conf
 				log.Infof("Updated configuration")
 			} else {
 				log.Errorf("Unable to fetch configuration")
-				time.Sleep(time.Minute * 5)
 			}
 		}
 	}()
@@ -61,8 +59,6 @@ func StartScheduler(agentConfig *agent_models.AgentConfig) {
 func runNetworkQuery() {
 	var wg sync.WaitGroup
 
-	var nInfo *agent_models.NetworkInfo
-
 	for true {
 		wg.Add(1)
 		go func() {
@@ -72,22 +68,22 @@ func runNetworkQuery() {
 			networkInfo, err := CheckNetworkInfo()
 			if err != nil {
 				log.Errorf("%s", err)
+			} else {
+				resp, err := PostNetworkInfo(networkInfo)
+				if err != nil || resp.Response != 200 {
+					// TODO save to queue
+					log.Errorf("Failed to push Network Information information.")
+				}
+
+				if resp.Response == 200 {
+					log.Infof("Pushed Network information.")
+				}
 			}
-			nInfo = networkInfo
 		}()
 		wg.Wait()
 		// Upload to server, check if it fails or not,
 		// then if it does, save to temporary list
 		// for later upload
-		resp, err := PostNetworkInfo(nInfo)
-		if err != nil || resp.Response == 404 {
-			// TODO save to queue
-			log.Errorf("Failed to push Network Information information.")
-		}
-
-		if resp.Response == 200 {
-			log.Infof("Pushed Network information.")
-		}
 
 		/*j, _ := json.Marshal(resp)
 		log.Infof("%s", j)*/
@@ -124,20 +120,21 @@ func runMtrCheck(t *agent_models.AgentConfig) {
 				}
 				//fmt.Printf("%s\n", string(j))
 			}
+
+			resp, err := PostMtr(mtrTargets)
+			if err != nil || resp.Response != 200 {
+				// TODO save to queue
+				log.Errorf("Failed to push MTR information.")
+			}
+
+			if resp.Response == 200 {
+				log.Infof("Pushed MTR information.")
+			}
 		}()
 		wg.Wait()
 		// Upload to server, check if it fails or not,
 		// then if it does, save to temporary list
 		// for later upload
-		resp, err := PostMtr(mtrTargets)
-		if err != nil || resp.Response == 404 {
-			// TODO save to queue
-			log.Errorf("Failed to push MTR information.")
-		}
-
-		if resp.Response == 200 {
-			log.Infof("Pushed MTR information.")
-		}
 
 		/*j, _ := json.Marshal(resp)
 		log.Infof("%s", j)*/
@@ -162,11 +159,18 @@ func runSpeedTestCheck(config *agent_models.AgentConfig) {
 				// TODO verify it was sent other then save to queue if not sent
 				PostSpeedTest(speedInfo)
 
-				/*j, err := json.Marshal(speedInfo)
-				if err != nil {
-					log.Fatal(err)
+				// Upload to server, check if it fails or not,
+				// then if it does, save to temporary list
+				// for later upload
+				resp, err := PostSpeedTest(speedInfo)
+				if err != nil || resp.Response != 200 {
+					// TODO save to queue
+					log.Errorf("Failed to push speedtest information.")
 				}
-				fmt.Println(string(j))*/
+
+				if resp.Response == 200 {
+					log.Infof("Pushed speedtest information.")
+				}
 			}()
 			wg.Wait()
 			config.SpeedTestPending = false
@@ -205,20 +209,21 @@ func runIcmpCheck(t *agent_models.AgentConfig, count int) {
 				}
 				//fmt.Printf("%s\n", string(j))
 			}
+
+			// Upload to server, check if it fails or not,
+			// then if it does, save to temporary list
+			// for later upload
+			resp, err := PostIcmp(pingTargets)
+			if err != nil || resp.Response != 200 {
+				// TODO save to queue
+				log.Errorf("Failed to push ICMP information.")
+			}
+
+			if resp.Response == 200 {
+				log.Infof("Pushed ICMP information.")
+			}
 		}()
 		wg.Wait()
-		// Upload to server, check if it fails or not,
-		// then if it does, save to temporary list
-		// for later upload
-		resp, err := PostIcmp(pingTargets)
-		if err != nil || resp.Response == 404 {
-			// TODO save to queue
-			log.Errorf("Failed to push ICMP information.")
-		}
-
-		if resp.Response == 200 {
-			log.Infof("Pushed ICMP information.")
-		}
 
 		/*j, _ := json.Marshal(resp)
 		log.Infof("%s", j)*/
