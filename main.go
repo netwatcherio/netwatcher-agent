@@ -60,26 +60,23 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		runConfigCheck(agentConfig)
+		var received = false
+		for !received {
+			conf, err := GetConfig()
+			if err == nil {
+				received = true
+				agentConfig = conf
+				log.Infof("Pulled configuration on start up")
+			} else {
+				log.Errorf("Unable to fetch configuration")
+				time.Sleep(time.Minute)
+			}
+		}
 	}()
 	wg.Wait()
 	StartScheduler(agentConfig)
 
 	wg.Wait()
-}
-
-func runConfigCheck(t *agent_models.AgentConfig) {
-	for {
-		go func() {
-			err := GetConfig(t)
-			if err != nil {
-				log.Errorf("Unable to config in scheduler")
-				time.Sleep(2)
-			} else {
-				log.Infof("pulled config from remote")
-			}
-		}()
-	}
 }
 
 func shutdown() {

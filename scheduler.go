@@ -18,6 +18,23 @@ func StartScheduler(agentConfig *agent_models.AgentConfig) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		var received = false
+		for !received {
+			conf, err := GetConfig()
+			if err == nil {
+				received = true
+				agentConfig = conf
+				log.Infof("Updated configuration")
+			} else {
+				log.Errorf("Unable to fetch configuration")
+				time.Sleep(time.Minute * 5)
+			}
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 		runIcmpCheck(agentConfig, 2)
 	}()
 	wg.Add(1)

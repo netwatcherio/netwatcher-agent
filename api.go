@@ -17,29 +17,28 @@ push to servers every 2 minutes with data collected (configurable on frontend?)
 front end/backend server will do the most work processing and sending alerts regarding sites and such
 */
 
-func GetConfig(apiConfig *agent_models.AgentConfig) error {
+func GetConfig() (*agent_models.AgentConfig, error) {
 	// TODO include authentication information
 	resp, err := http.Get(ApiUrl + "/v1/agent/config")
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var apiCfg *agent_models.ApiConfigResponse
 	err = json.Unmarshal(body, &apiCfg)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if apiCfg.Response == 200 {
-		apiConfig = &apiCfg.Config
-		return nil
+		return &apiCfg.Config, nil
 	} else {
-		return errors.New("unable to get config")
+		return nil, errors.New("unable to get config")
 	}
 
 	// TODO unmarshal body to api response modes
