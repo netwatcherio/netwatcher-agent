@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/sagostin/netwatcher-agent/agent_models"
 	"io/ioutil"
 	"net/http"
+	"os"
 )
 
 /*
@@ -19,7 +21,7 @@ front end/backend server will do the most work processing and sending alerts reg
 
 func GetConfig() (*agent_models.AgentConfig, error) {
 	// TODO include authentication information
-	resp, err := http.Get(ApiUrl + "/v1/agent/config")
+	resp, err := http.Get(ApiUrl + "/v1/agent/config/" + os.Getenv("PIN") + "/" + os.Getenv("HASH"))
 	if err != nil {
 		return nil, err
 	}
@@ -28,6 +30,8 @@ func GetConfig() (*agent_models.AgentConfig, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	fmt.Println(string(body))
 
 	var apiCfg *agent_models.ApiConfigResponse
 	err = json.Unmarshal(body, &apiCfg)
@@ -45,7 +49,13 @@ func GetConfig() (*agent_models.AgentConfig, error) {
 }
 
 func PostNetworkInfo(t *agent_models.NetworkInfo) (agent_models.ApiResponse, error) {
-	j, err := json.Marshal(t)
+	verifyData := agent_models.ApiPushData{
+		Pin:  os.Getenv("PIN"),
+		Hash: os.Getenv("HASH"),
+		Data: t,
+	}
+
+	j, err := json.Marshal(verifyData)
 	if err != nil {
 		return agent_models.ApiResponse{}, err
 	}
@@ -55,7 +65,13 @@ func PostNetworkInfo(t *agent_models.NetworkInfo) (agent_models.ApiResponse, err
 }
 
 func PostSpeedTest(t *agent_models.SpeedTestInfo) (agent_models.ApiResponse, error) {
-	j, err := json.Marshal(t)
+	verifyData := agent_models.ApiPushData{
+		Pin:  os.Getenv("PIN"),
+		Hash: os.Getenv("HASH"),
+		Data: t,
+	}
+
+	j, err := json.Marshal(verifyData)
 	if err != nil {
 		return agent_models.ApiResponse{}, err
 	}
@@ -65,20 +81,26 @@ func PostSpeedTest(t *agent_models.SpeedTestInfo) (agent_models.ApiResponse, err
 }
 
 func PostMtr(t []*agent_models.MtrTarget) (agent_models.ApiResponse, error) {
-	j, err := json.Marshal(t)
-	if err != nil {
-		return agent_models.ApiResponse{}, err
+	verifyData := agent_models.ApiPushData{
+		Pin:  os.Getenv("PIN"),
+		Hash: os.Getenv("HASH"),
+		Data: t,
 	}
+
+	j, err := json.Marshal(verifyData)
 
 	resp, err := postData(j, "/v1/agent/update/mtr")
 	return resp, err
 }
 
 func PostIcmp(t []*agent_models.IcmpTarget) (agent_models.ApiResponse, error) {
-	j, err := json.Marshal(t)
-	if err != nil {
-		return agent_models.ApiResponse{}, err
+	verifyData := agent_models.ApiPushData{
+		Pin:  os.Getenv("PIN"),
+		Hash: os.Getenv("HASH"),
+		Data: t,
 	}
+
+	j, err := json.Marshal(verifyData)
 
 	resp, err := postData(j, "/v1/agent/update/icmp")
 	return resp, err
