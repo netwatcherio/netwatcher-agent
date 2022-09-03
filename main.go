@@ -5,9 +5,7 @@ import (
 	"github.com/sagostin/netwatcher-agent/agent_models"
 	log "github.com/sirupsen/logrus"
 	"os"
-	"os/signal"
 	"sync"
-	"syscall"
 	"time"
 )
 
@@ -37,7 +35,7 @@ func main() {
 
 	godotenv.Load()
 
-	signals := make(chan os.Signal, 1)
+	/*signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGTERM)
 	signal.Notify(signals, syscall.SIGKILL)
 	go func() {
@@ -45,7 +43,7 @@ func main() {
 		log.Fatal("Received Signal: %s", s)
 		shutdown()
 		os.Exit(1)
-	}()
+	}()*/
 
 	ApiUrl = os.Getenv("API_URL")
 
