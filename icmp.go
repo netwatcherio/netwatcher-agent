@@ -115,8 +115,10 @@ func calculateMetrics(t []*agent_models.IcmpTarget) {
 					lossPercent++
 				}
 			}
-			lossPercent = lossPercent / len(t[n].Result.Data)
-			t[n].Result.Metrics.LossPercent = lossPercent
+			if len(t[n].Result.Data) > 0 {
+				lossPercent = lossPercent / len(t[n].Result.Data)
+				t[n].Result.Metrics.LossPercent = lossPercent
+			}
 		}()
 		// Jitter Average
 		go func() {
