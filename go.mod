@@ -1,4 +1,4 @@
-module github.com/sagostin/netwatcher-agent
+module github.com/netwatcherio/netwatcher-agent
 
 go 1.17
 
