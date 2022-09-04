@@ -5,6 +5,7 @@ import (
 	"github.com/jackpal/gateway"
 	"github.com/sagostin/netwatcher-agent/agent_models"
 	"github.com/showwin/speedtest-go/speedtest"
+	log "github.com/sirupsen/logrus"
 	"time"
 )
 
@@ -48,12 +49,12 @@ func CheckNetworkInfo() (*agent_models.NetworkInfo, error) {
 
 	localInterface, err := gateway.DiscoverInterface()
 	if err != nil {
-		return nil, err
+		log.Errorf("%s", err)
 	}
 
 	localGateway, err := gateway.DiscoverGateway()
 	if err != nil {
-		return nil, err
+		log.Errorf("%s", err)
 	}
 
 	return &agent_models.NetworkInfo{

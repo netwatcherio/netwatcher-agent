@@ -77,8 +77,10 @@ func calculateMetrics(t []*agent_models.IcmpTarget) {
 			for _, m := range t[n].Result.Data {
 				average = average + int(m.Elapsed)
 			}
-			average = average / len(t[n].Result.Data)
-			t[n].Result.Metrics.LatencyAverage = time.Duration(average)
+			if len(t[n].Result.Data) > 0 {
+				average = average / len(t[n].Result.Data)
+				t[n].Result.Metrics.LatencyAverage = time.Duration(average)
+			}
 		}()
 		// Latency Maximum
 		go func() {
