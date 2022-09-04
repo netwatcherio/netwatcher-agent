@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/sagostin/netwatcher-agent/agent_models"
+	"github.com/netwatcherio/netwatcher-agent/agent_models"
 	log "github.com/sirupsen/logrus"
 	"github.com/tonobo/mtr/pkg/icmp"
 	"math"

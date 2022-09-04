@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/sagostin/netwatcher-agent/agent_models"
+	"github.com/netwatcherio/netwatcher-agent/agent_models"
 	"io/ioutil"
 	"net/http"
 	"os"

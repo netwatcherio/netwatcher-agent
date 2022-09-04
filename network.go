@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 	"github.com/jackpal/gateway"
-	"github.com/sagostin/netwatcher-agent/agent_models"
+	"github.com/netwatcherio/netwatcher-agent/agent_models"
 	"github.com/showwin/speedtest-go/speedtest"
 	log "github.com/sirupsen/logrus"
 	"time"
