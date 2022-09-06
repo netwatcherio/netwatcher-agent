@@ -24,3 +24,5 @@ type ApiPushData struct {
 	Timestamp time.Time   `json:"timestamp"bson:"timestamp"`
 	Data      interface{} `json:"data"bson:"data"`
 }
+
+// tttt
