@@ -11,24 +11,24 @@ import (
 func TestMtrTargets(t []*agent_models.MtrTarget, triggered bool) {
 	var wg sync.WaitGroup
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for n := range t {
-			res, err := CheckMTR(t[n], 5)
+	for _, tn := range t {
+		wg.Add(1)
+		go func(tn1 *agent_models.MtrTarget) {
+			defer wg.Done()
+			res, err := CheckMTR(tn1, 5)
 			if err != nil {
 				log.Fatal(err)
 			}
 
-			t[n].Result.Mtr = mtr.MTR{
+			tn1.Result.Mtr = mtr.MTR{
 				SrcAddress: res.SrcAddress,
 				Address:    res.Address,
 				Statistic:  res.Statistic,
 			}
-			t[n].Result.StopTimestamp = time.Now()
-			t[n].Result.Triggered = triggered
-		}
-	}()
+			tn1.Result.StopTimestamp = time.Now()
+			tn1.Result.Triggered = triggered
+		}(tn)
+	}
 
 	wg.Wait()
 }

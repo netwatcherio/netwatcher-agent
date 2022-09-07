@@ -38,22 +38,24 @@ func CheckICMP(t *agent_models.IcmpTarget) (agent_models.IcmpData, error) {
 func TestIcmpTargets(t []*agent_models.IcmpTarget, count int, interval int) {
 	var wg sync.WaitGroup
 
-	for n := range t {
+	log.Infof("len %v", len(t))
+	for _, tn := range t {
+		log.Infof("starting icmp for %s", tn.Address)
 		wg.Add(1)
-		go func() {
+		go func(tn1 *agent_models.IcmpTarget) {
 			defer wg.Done()
 			for i := 0; i < count; i++ {
-				icmp, err := CheckICMP(t[n])
+				icmp, err := CheckICMP(tn1)
 				if err != nil {
 					//  read ip 0.0.0.0: raw-read ip4 0.0.0.0: i/o timeout
 					log.Errorf("%s", err)
 				}
-
-				t[n].Result.Data = append(t[n].Result.Data, icmp)
-				t[n].Result.StopTimestamp = time.Now()
+				tn1.Result.Data = append(tn1.Result.Data, icmp)
+				tn1.Result.StopTimestamp = time.Now()
 				time.Sleep(time.Duration(int(time.Second) * interval))
 			}
-		}()
+			log.Infof("ending icmp for %s", tn1.Address)
+		}(tn)
 	}
 	wg.Wait()
 	wg.Add(1)
@@ -153,6 +155,5 @@ func calculateMetrics(t []*agent_models.IcmpTarget) {
 		}()
 		// TODO jitter max, and jitter 95 percentile
 	}
-
 	wg.Wait()
 }

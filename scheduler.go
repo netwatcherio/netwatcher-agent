@@ -33,7 +33,7 @@ func StartScheduler(agentConfig *agent_models.AgentConfig) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		runIcmpCheck(agentConfig, 2)
+		runIcmpCheck(agentConfig, 30)
 	}()
 	wg.Add(1)
 	go func() {
@@ -186,12 +186,11 @@ func runIcmpCheck(t *agent_models.AgentConfig, count int) {
 	for true {
 		var pingTargets []*agent_models.IcmpTarget
 
-		for n := range t.PingTargets {
+		for i, n := range t.PingTargets {
 			pingTargets = append(pingTargets, &agent_models.IcmpTarget{
-				Address: t.PingTargets[n],
+				Address: n,
 			})
-
-			pingTargets[n].Result.StartTimestamp = time.Now()
+			pingTargets[i].Result.StartTimestamp = time.Now()
 		}
 		wg.Add(1)
 		go func() {
@@ -227,5 +226,6 @@ func runIcmpCheck(t *agent_models.AgentConfig, count int) {
 
 		/*j, _ := json.Marshal(resp)
 		log.Infof("%s", j)*/
+		time.Sleep(time.Second * 2)
 	}
 }
