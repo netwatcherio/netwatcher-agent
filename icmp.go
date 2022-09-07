@@ -72,64 +72,64 @@ func calculateMetrics(t []*agent_models.IcmpTarget) {
 	for n := range t {
 		wg.Add(5)
 		// Latency Average
-		go func() {
+		go func(tn *agent_models.IcmpTarget) {
 			defer wg.Done()
 			var average = 0
 			// TODO take into account the packet loss (if any?)
-			for _, m := range t[n].Result.Data {
+			for _, m := range tn.Result.Data {
 				average = average + int(m.Elapsed)
 			}
-			if len(t[n].Result.Data) > 0 {
-				average = average / len(t[n].Result.Data)
-				t[n].Result.Metrics.LatencyAverage = time.Duration(average)
+			if len(tn.Result.Data) > 0 {
+				average = average / len(tn.Result.Data)
+				tn.Result.Metrics.LatencyAverage = time.Duration(average)
 			}
-		}()
+		}(t[n])
 		// Latency Maximum
-		go func() {
+		go func(tn *agent_models.IcmpTarget) {
 			defer wg.Done()
 			var max = 0
-			for _, m := range t[n].Result.Data {
+			for _, m := range tn.Result.Data {
 				if max < int(m.Elapsed) {
 					max = int(m.Elapsed)
 				}
 			}
-			t[n].Result.Metrics.LatencyMax = time.Duration(max)
-		}()
+			tn.Result.Metrics.LatencyMax = time.Duration(max)
+		}(t[n])
 		// Latency Minimum
-		go func() {
+		go func(tn *agent_models.IcmpTarget) {
 			defer wg.Done()
 			var min = 0
-			for _, m := range t[n].Result.Data {
+			for _, m := range tn.Result.Data {
 				if min == 0 {
 					min = int(m.Elapsed)
 				} else if min > int(m.Elapsed) {
 					min = int(m.Elapsed)
 				}
 			}
-			t[n].Result.Metrics.LatencyMin = time.Duration(min)
-		}()
+			tn.Result.Metrics.LatencyMin = time.Duration(min)
+		}(t[n])
 		// Packet Loss Percentage
-		go func() {
+		go func(tn *agent_models.IcmpTarget) {
 			defer wg.Done()
 			var lossPercent = 0
-			for _, m := range t[n].Result.Data {
+			for _, m := range tn.Result.Data {
 				if !m.Success {
 					lossPercent++
 				}
 			}
-			if len(t[n].Result.Data) > 0 {
-				lossPercent = lossPercent / len(t[n].Result.Data)
-				t[n].Result.Metrics.LossPercent = lossPercent
+			if len(tn.Result.Data) > 0 {
+				lossPercent = lossPercent / len(tn.Result.Data)
+				tn.Result.Metrics.LossPercent = lossPercent
 			}
-		}()
+		}(t[n])
 		// Jitter Average
-		go func() {
+		go func(tn *agent_models.IcmpTarget) {
 			defer wg.Done()
 			var jitterAvg = 0
 			var prev = 0
 			var jitterC = 0
 			//var jitterVals []int
-			for _, m := range t[n].Result.Data {
+			for _, m := range tn.Result.Data {
 				if m.Success {
 					if prev == 0 {
 						prev = int(m.Elapsed)
@@ -151,8 +151,8 @@ func calculateMetrics(t []*agent_models.IcmpTarget) {
 			if jitterC > 0 && jitterAvg > 0 {
 				jitterAvg = jitterAvg / jitterC
 			}
-			t[n].Result.Metrics.JitterAverage = time.Duration(jitterAvg)
-		}()
+			tn.Result.Metrics.JitterAverage = time.Duration(jitterAvg)
+		}(t[n])
 		// TODO jitter max, and jitter 95 percentile
 	}
 	wg.Wait()
