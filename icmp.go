@@ -79,10 +79,7 @@ func calculateMetrics(t []*agent_models.IcmpTarget) {
 			for _, m := range tn.Result.Data {
 				average = average + int(m.Elapsed)
 			}
-			if len(tn.Result.Data) > 0 {
-				average = average / len(tn.Result.Data)
-				tn.Result.Metrics.LatencyAverage = time.Duration(average)
-			}
+			tn.Result.Metrics.LatencyAverage = time.Duration(average / len(tn.Result.Data))
 		}(t[n])
 		// Latency Maximum
 		go func(tn *agent_models.IcmpTarget) {
@@ -117,10 +114,7 @@ func calculateMetrics(t []*agent_models.IcmpTarget) {
 					lossPercent++
 				}
 			}
-			if len(tn.Result.Data) > 0 {
-				lossPercent = lossPercent / len(tn.Result.Data)
-				tn.Result.Metrics.LossPercent = lossPercent
-			}
+			tn.Result.Metrics.LossPercent = lossPercent / len(tn.Result.Data)
 		}(t[n])
 		// Jitter Average
 		go func(tn *agent_models.IcmpTarget) {
@@ -147,11 +141,7 @@ func calculateMetrics(t []*agent_models.IcmpTarget) {
 					}
 				}
 			}
-
-			if jitterC > 0 && jitterAvg > 0 {
-				jitterAvg = jitterAvg / jitterC
-			}
-			tn.Result.Metrics.JitterAverage = time.Duration(jitterAvg)
+			tn.Result.Metrics.JitterAverage = time.Duration(jitterAvg / jitterC)
 		}(t[n])
 		// TODO jitter max, and jitter 95 percentile
 	}
