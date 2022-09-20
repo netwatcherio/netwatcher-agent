@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/netwatcherio/netwatcher-agent/agent_models"
+	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -92,6 +93,7 @@ func PostMtr(t []*agent_models.MtrTarget) (agent_models.ApiResponse, error) {
 	}
 
 	j, err := json.Marshal(verifyData)
+	log.Errorf("%s", j)
 
 	resp, err := postData(j, "/v1/agent/update/mtr")
 	return resp, err
