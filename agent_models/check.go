@@ -18,7 +18,7 @@ type NetworkInfo struct {
 }
 
 // SpeedTestInfo
-//TODO log how long it took and then timestamp of when it was started and finished
+// TODO log how long it took and then timestamp of when it was started and finished
 type SpeedTestInfo struct {
 	Latency   time.Duration `json:"latency"bson:"latency"`
 	DLSpeed   float64       `json:"dl_speed"bson:"dl_speed"`
@@ -49,8 +49,6 @@ type IcmpTarget struct {
 			LatencyMax     time.Duration `json:"latency_max"bson:"latency_max"`
 			LatencyMin     time.Duration `json:"latency_min"bson:"latency_min"`
 			LossPercent    int           `json:"loss_percent"bson:"loss_percent"`
-			JitterAverage  time.Duration `json:"jitter_average"bson:"jitter_average"`
-			JitterMax      time.Duration `json:"jitter_max"bson:"jitter_max"`
 		} `json:"metrics"bson:"metrics"`
 	} `json:"result"bson:"result"`
 }
