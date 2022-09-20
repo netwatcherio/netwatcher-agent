@@ -70,7 +70,7 @@ func calculateMetrics(t []*agent_models.IcmpTarget) {
 	var wg sync.WaitGroup
 
 	for n := range t {
-		wg.Add(5)
+		wg.Add(4)
 		// Latency Average
 		go func(tn *agent_models.IcmpTarget) {
 			defer wg.Done()
@@ -117,7 +117,7 @@ func calculateMetrics(t []*agent_models.IcmpTarget) {
 			tn.Result.Metrics.LossPercent = lossPercent / len(tn.Result.Data)
 		}(t[n])
 		// Jitter Average
-		go func(tn *agent_models.IcmpTarget) {
+		/*go func(tn *agent_models.IcmpTarget) {
 			defer wg.Done()
 			var jitterAvg = 0
 			var prev = 0
@@ -144,7 +144,7 @@ func calculateMetrics(t []*agent_models.IcmpTarget) {
 			if jitterC > 0 && jitterAvg > 0 {
 				tn.Result.Metrics.JitterAverage = time.Duration(jitterAvg / jitterC)
 			}
-		}(t[n])
+		}(t[n])*/
 		// TODO jitter max, and jitter 95 percentile
 	}
 	wg.Wait()
