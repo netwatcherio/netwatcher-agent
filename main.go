@@ -25,6 +25,8 @@ var (
 	ApiUrl string
 )
 
+//todo implement nmap and iperf to main agents
+
 func main() {
 	var err error
 	if err != nil {
