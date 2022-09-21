@@ -1,0 +1,32 @@
+{
+  "product": "NetWatcher Agent",
+  "company": "Shaun Agostinho",
+  "license": "./LICENSE.md",
+  "upgrade-code": "ac594748-2324-453f-8d92-de561c8e8169",
+  "files": {
+    "guid": "b9fbd6ee-fda2-4675-99bf-172d09a75307",
+    "items": [
+      "bin/NetWatcher-Agent.msi.exe"
+    ]
+  },
+  "env": {
+    "guid": "9430bfa1-1666-4041-ab84-2e26c6da0baa",
+    "vars": [
+      {
+        "name": "PATH",
+        "value": "[INSTALLDIR]",
+        "permanent": "no",
+        "system": "no",
+        "action": "set",
+        "part": "last"
+      }
+    ]
+  },
+  "shortcuts": {},
+  "choco": {
+    "description": "NetWatcher Agent is used monitor network and voice quality",
+    "project-url": "https://github.com/netwatcherio/netwatcher-agent",
+    "tags": "netwatcher",
+    "license-url": "https://github.com/netwatcherio/netwatcher-agent/blob/master/LICENSE.md"
+  }
+}
