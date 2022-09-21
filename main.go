@@ -35,7 +35,7 @@ func main() {
 
 	log.SetFormatter(&log.TextFormatter{})
 
-	godotenv.Load()
+	godotenv.Load("config.conf")
 
 	/*signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGTERM)
