@@ -1,12 +1,12 @@
 {
   "product": "NetWatcher Agent",
   "company": "Shaun Agostinho",
-  "license": "../LICENSE.md",
+  "license": "./LICENSE.md",
   "upgrade-code": "ac594748-2324-453f-8d92-de561c8e8169",
   "files": {
     "guid": "b9fbd6ee-fda2-4675-99bf-172d09a75307",
     "items": [
-      "../bin/windows/netwatcher-agent.exe"
+      "./bin/windows/netwatcher-agent.exe"
     ]
   },
   "env": {
