@@ -54,9 +54,6 @@ func main() {
 
 	var agentConfig *agent_models.AgentConfig
 
-	/*agentConfig.TraceTargets = append(agentConfig.TraceTargets, "1.1.1.1")
-	agentConfig.PingTargets = append(agentConfig.PingTargets, "1.1.1.1")*/
-
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
