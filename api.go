@@ -13,14 +13,7 @@ import (
 	"time"
 )
 
-/*
-TODO
-api that has get and post functions to allow sending and receiving commands/updates
-poll configuration update every 5 minutes
-push to servers every 2 minutes with data collected (configurable on frontend?)
-front end/backend server will do the most work processing and sending alerts regarding sites and such
-*/
-
+// todo change to post and actually have authentication
 func GetConfig() (*agent_models.AgentConfig, error) {
 	// TODO include authentication information
 	resp, err := http.Get(ApiUrl + "/v1/agent/config/" + os.Getenv("PIN") + "/" + os.Getenv("HASH"))
