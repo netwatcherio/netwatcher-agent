@@ -42,8 +42,9 @@ func main() {
 		fmt.Println("file does not exist")
 		// To start, here's how to dump a string (or just
 		// bytes) into a file.
+		_, err := os.Create("./config.conf")
 		d1 := []byte("API_URL=*PUT URL HERE*\nPIN=*PUT PIN HERE*\nHASH=\n")
-		err := os.WriteFile("./config.conf", d1, 0644)
+		err = os.WriteFile("./config.conf", d1, 0644)
 		if err != nil {
 			log.Fatal("Cannot create configuration.")
 		}
