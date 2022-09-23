@@ -1,6 +1,8 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	"github.com/joho/godotenv"
 	"github.com/netwatcherio/netwatcher-agent/agent_models"
 	log "github.com/sirupsen/logrus"
@@ -35,6 +37,18 @@ func main() {
 
 	log.SetFormatter(&log.TextFormatter{})
 
+	_, err = os.Stat("./config.conf")
+	if errors.Is(err, os.ErrNotExist) {
+		fmt.Println("file does not exist")
+		// To start, here's how to dump a string (or just
+		// bytes) into a file.
+		d1 := []byte("API_URL=*PUT URL HERE*\nPIN=*PUT PIN HERE*\nHASH=\n")
+		err := os.WriteFile("./config.conf", d1, 0644)
+		if err != nil {
+			log.Fatal("Cannot create configuration.")
+		}
+	}
+
 	godotenv.Load("config.conf")
 
 	/*signals := make(chan os.Signal, 1)
@@ -48,6 +62,9 @@ func main() {
 	}()*/
 
 	ApiUrl = os.Getenv("API_URL")
+	if ApiUrl == "" {
+		log.Fatal("You must insert the API URL")
+	}
 
 	var wg sync.WaitGroup
 	log.Infof("Starting NetWatcher Agent...")
