@@ -20,6 +20,11 @@ With Zabbix and other solutions not doing exactly what we wanted, I decided to c
    **running it as a service is soon™️**
 9. Check the control panel in a bit
 
+## Planned Features
+- iperf integration to test between set groups of "master agents"
+- nmap w/ cool network layout??!?? 🤪
+- iperf speedtests to master agents
+
 ## Changelog
 	Just look at commits, eventually I'll make a change log once more stable.
 
