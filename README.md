@@ -21,6 +21,7 @@ With Zabbix and other solutions not doing exactly what we wanted, I decided to c
 9. Check the control panel in a bit
 
 ## Planned Features
+- auto update from stable releases
 - iperf integration to test between set groups of "master agents"
 - nmap w/ cool network layout??!?? 🤪
 - iperf speedtests to master agents
