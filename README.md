@@ -24,6 +24,7 @@ With Zabbix and other solutions not doing exactly what we wanted, I decided to c
 - iperf integration to test between set groups of "master agents"
 - nmap w/ cool network layout??!?? 🤪
 - iperf speedtests to master agents
+- snmp
 
 ## Changelog
 	Just look at commits, eventually I'll make a change log once more stable.
