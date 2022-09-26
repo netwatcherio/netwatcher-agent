@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/joho/godotenv"
+	"github.com/netwatcherio/ethr"
 	"github.com/netwatcherio/netwatcher-agent/agent_models"
 	log "github.com/sirupsen/logrus"
 	"os"
@@ -69,8 +70,18 @@ func main() {
 
 	var wg sync.WaitGroup
 	log.Infof("Starting NetWatcher Agent...")
+	log.Infof("Starting microsoft/ethr logging...")
 
+	var nonCliConfig = &ethr.NonCliConfig{}
+	ethr.RunEthr(false, nonCliConfig)
 	var agentConfig *agent_models.AgentConfig
+
+	ethrLogChan := <-ethr.LogChan
+	go func() {
+		for true {
+			log.Warnf("%s", ethrLogChan)
+		}
+	}()
 
 	wg.Add(1)
 	go func() {
@@ -88,6 +99,7 @@ func main() {
 			}
 		}
 	}()
+
 	wg.Wait()
 	StartScheduler(agentConfig)
 
