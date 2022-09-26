@@ -157,8 +157,6 @@ func runSpeedTestCheck(config *agent_models.AgentConfig) {
 					log.Fatalln(err)
 				}
 				// TODO verify it was sent other then save to queue if not sent
-				PostSpeedTest(speedInfo)
-
 				// Upload to server, check if it fails or not,
 				// then if it does, save to temporary list
 				// for later upload
@@ -175,8 +173,8 @@ func runSpeedTestCheck(config *agent_models.AgentConfig) {
 			wg.Wait()
 			config.SpeedTestPending = false
 			// sleep
-			time.Sleep(time.Duration(int(time.Second) * 300))
 		}
+		time.Sleep(time.Duration(int(time.Second) * 300))
 	}
 }
 

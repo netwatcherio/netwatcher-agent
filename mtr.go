@@ -17,7 +17,7 @@ func TestMtrTargets(t []*agent_models.MtrTarget, triggered bool) {
 			defer wg.Done()
 			res, err := CheckMTR(tn1, 5)
 			if err != nil {
-				log.Fatal(err)
+				log.Error(err)
 			}
 
 			tn1.Result.Mtr = mtr.MTR{
@@ -35,7 +35,7 @@ func TestMtrTargets(t []*agent_models.MtrTarget, triggered bool) {
 
 func CheckMTR(t *agent_models.MtrTarget, count int) (*mtr.MTR, error) {
 	m, ch, err := mtr.NewMTR(t.Address, srcAddr, timeout, interval, hopSleep,
-		maxHops, maxUnknownHops, ringBufferSize, ptrLookup)
+		maxHops, maxUnknownHops, ringBufferSize, true)
 	if err != nil {
 		return nil, err
 	}
