@@ -16,6 +16,7 @@ type MtrTarget struct {
 
 type MtrMetrics struct {
 	Address  string `json:"address"bson:"address"`
+	FQDN     string `bson:"fqdn"json:"fqdn"`
 	Sent     int    `json:"sent"bson:"sent"`
 	Received int    `json:"received"bson:"received"`
 	Last     string `bson:"last"json:"last"`

@@ -8,6 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -33,7 +34,7 @@ func TestMtrTargets(t []*agent_models.MtrTarget, triggered bool) {
 	wg.Wait()
 }
 
-func CheckMTR(t *agent_models.MtrTarget, duration int) error {
+/*func CheckMTR(t *agent_models.MtrTarget, duration int) error {
 	var cmd *exec.Cmd
 	var regx string
 	switch OsDetect {
@@ -48,7 +49,12 @@ func CheckMTR(t *agent_models.MtrTarget, duration int) error {
 
 		regx = "(\\d+)\\s+" +
 			"(((25[0-5]|(2[0-4]|1\\d|[1-9]|)\\d)\\.?\\b){4}|())\\s*" +
-			"([(]((25[0-5]|(2[0-4]|1\\d|[1-9]|)\\d)\\.?\\b){4}[)]|())\\s+(((\\d+.\\d+)\\s+([a-z]+))|([*]))\\s+(((\\d+.\\d+)\\s+([a-z]+))|([*]))\\s+(((\\d+.\\d+)\\s+([a-z]+))|([*]))"
+			"([(]((25[0-5]|(2[0-4]|1\\d|[1-9]|)\\d)\\.?\\b){4}[)]|())\\s+" +
+			"(((\\d+.\\d+)\\s+([a-z]+))|([*]))\\s+" +
+			"(((\\d+.\\d+)\\s+" +
+			"([a-z]+))|([*]))\\s+" +
+			"(((\\d+.\\d+)\\s+" +
+			"([a-z]+))|([*]))"
 		break
 	case "linux":
 		log.Println("Linux")
@@ -82,17 +88,43 @@ func CheckMTR(t *agent_models.MtrTarget, duration int) error {
 
 		dataMatch := regex.FindStringSubmatch(ethrLine)
 
-		log.Infof("%s", dataMatch)
+		log.Infof("%s", len(dataMatch))
+
+		avg := "*"
+		if dataMatch[12] != "*" {
+			avg = dataMatch[12]
+		}
+
+		best := "*"
+		if dataMatch[21] != "*" {
+			avg = dataMatch[20]
+		}
+
+		worst := "*"
+		if dataMatch[21] != "*" {
+			avg = dataMatch[20]
+		}
+
+		address := "???"
+		if dataMatch[9] != "" {
+			address = dataMatch[9]
+		}
+
+		fqdn := "???"
+		if dataMatch[2] != "" {
+			fqdn = dataMatch[2]
+		}
 
 		// hop num = result[1]
 		t.Result.Metrics[convHandleStrInt(dataMatch[1])] = agent_models.MtrMetrics{
-			Address:  dataMatch[2],
+			Address:  address,
+			FQDN:     fqdn,
 			Sent:     0,
 			Received: 0,
-			Last:     dataMatch[14],
-			Avg:      dataMatch[20],
-			Best:     dataMatch[26],
-			Worst:    dataMatch[32],
+			Last:     "-",
+			Avg:      avg,
+			Best:     best,
+			Worst:    worst,
 		}
 	}
 
@@ -103,10 +135,10 @@ func CheckMTR(t *agent_models.MtrTarget, duration int) error {
 	log.Warnf("%s", j)
 
 	return nil
-}
+}*/
 
 // change to client controller check
-/*func CheckMTR(t *agent_models.MtrTarget, duration int) error {
+func CheckMTR(t *agent_models.MtrTarget, duration int) error {
 	var cmd *exec.Cmd
 	switch OsDetect {
 	case "windows":
@@ -137,7 +169,7 @@ func CheckMTR(t *agent_models.MtrTarget, duration int) error {
 	ethrOutput := strings.Split(string(out), "- - - - - - - - - - - - - - - - - "+
 		"- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -")
 
-	regex := *regexp.MustCompile("\\s+(\\d+).{4}((((25[0-5]|(2[0-4]|1\\d|[1-9]|)\\d)\\.?\\b){4})|([?]{3}))\\s+((\\d+)|([-]))\\s+((\\d+)|([-]))\\s+(((([0-9]*\\.[0-9]+)|([0-9]+\\.))[a-z]+)|([-]))\\s+(((([0-9]*\\.[0-9]+)|([0-9]+\\.))[a-z]+)|([-]))\\s+(((([0-9]*\\.[0-9]+)|([0-9]+\\.))[a-z]+)|([-]))\\s+(((([0-9]*\\.[0-9]+)|([0-9]+\\.))[a-z]+)|([-]))") // worst
+	regex := *regexp.MustCompile("(\\d+).{4}((((25[0-5]|(2[0-4]|1\\d|[1-9]|)\\d)\\.?\\b){4})|([?]{3}))\\s+((\\d+)|([-]))\\s+((\\d+)|([-]))\\s+(((([0-9]*\\.[0-9]+)|([0-9]+\\.))[a-z]+)|([-]))\\s+(((([0-9]*\\.[0-9]+)|([0-9]+\\.))[a-z]+)|([-]))\\s+(((([0-9]*\\.[0-9]+)|([0-9]+\\.))[a-z]+)|([-]))\\s+(((([0-9]*\\.[0-9]+)|([0-9]+\\.))[a-z]+)|([-]))") // worst
 	if err != nil {
 		return err
 	}
@@ -172,10 +204,10 @@ func CheckMTR(t *agent_models.MtrTarget, duration int) error {
 	if err != nil {
 		return err
 	}
-	log.Warnf("%s", j)
+	fmt.Printf("%s", j)
 
 	return nil
-}*/
+}
 
 func mtrNumDashCheck(str string) int {
 	if str == "-" {
