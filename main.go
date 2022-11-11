@@ -8,6 +8,7 @@ import (
 	"github.com/netwatcherio/netwatcher-agent/agent_models"
 	log "github.com/sirupsen/logrus"
 	"os"
+	"runtime"
 	"sync"
 	"time"
 )
@@ -25,7 +26,8 @@ var (
 )
 
 var (
-	ApiUrl string
+	ApiUrl   string
+	OsDetect string
 )
 
 //todo implement nmap and iperf to main agents
@@ -37,6 +39,7 @@ func main() {
 	}
 
 	log.SetFormatter(&log.TextFormatter{})
+	OsDetect = runtime.GOOS
 
 	_, err = os.Stat("./config.conf")
 	if errors.Is(err, os.ErrNotExist) {
@@ -72,8 +75,6 @@ func main() {
 	log.Infof("Starting NetWatcher Agent...")
 	log.Infof("Starting microsoft/ethr logging...")
 
-	var nonCliConfig = &ethr.NonCliConfig{}
-	ethr.RunEthr(false, nonCliConfig)
 	var agentConfig *agent_models.AgentConfig
 
 	ethrLogChan := <-ethr.LogChan
