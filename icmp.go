@@ -7,7 +7,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"os/exec"
 	"regexp"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -15,7 +14,7 @@ import (
 
 // TODO DSCP Tags? https://github.com/rclone/rclone/issues/755
 
-func CheckICMP(t *agent_models.IcmpTarget, interval int) error {
+func CheckICMP(t *agent_models.IcmpTarget, duration int) error {
 	var cmd *exec.Cmd
 	switch OsDetect {
 	case "windows":
@@ -23,7 +22,7 @@ func CheckICMP(t *agent_models.IcmpTarget, interval int) error {
 		break
 	case "darwin":
 		log.Println("OSX")
-		args := []string{"-c", "./lib/ethr_osx -x -p tcp -t pi -d ", string(interval), "s -4"}
+		args := []string{"-c", "./lib/ethr_osx -x " + t.Address + " -p icmp -t pi -d " + string(duration) + "s -4"}
 		cmd = exec.CommandContext(context.TODO(), "/bin/bash", args...)
 		break
 	case "linux":
@@ -76,14 +75,6 @@ func CheckICMP(t *agent_models.IcmpTarget, interval int) error {
 	// todo regex 🤪
 
 	return nil
-}
-
-func convHandleStrInt(str string) int {
-	atoi, err := strconv.Atoi(str)
-	if err != nil {
-		return 0
-	}
-	return atoi
 }
 
 func TestIcmpTargets(t []*agent_models.IcmpTarget, interval int) {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/netwatcherio/netwatcher-agent/agent_models"
 	log "github.com/sirupsen/logrus"
 	"sync"
@@ -114,11 +115,11 @@ func runMtrCheck(t *agent_models.AgentConfig) {
 			TestMtrTargets(mtrTargets, false)
 
 			for _, st := range mtrTargets {
-				_, err := json.Marshal(st)
+				j, err := json.Marshal(st)
 				if err != nil {
 					log.Fatal(err)
 				}
-				//fmt.Printf("%s\n", string(j))
+				fmt.Printf("%s\n", string(j))
 			}
 
 			resp, err := PostMtr(mtrTargets)
@@ -197,7 +198,7 @@ func runIcmpCheck(t *agent_models.AgentConfig, count int) {
 			if t.PingInterval < 2 {
 				t.PingInterval = 2
 			}
-			TestIcmpTargets(pingTargets, count, t.PingInterval)
+			TestIcmpTargets(pingTargets, t.PingInterval)
 
 			for _, st := range pingTargets {
 				_, err := json.Marshal(st)
