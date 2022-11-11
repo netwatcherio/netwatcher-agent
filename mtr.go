@@ -16,13 +16,11 @@ import (
 func TestMtrTargets(t []*agent_models.MtrTarget, triggered bool) {
 	var wg sync.WaitGroup
 
-	// ([0-9]*).{4}(((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4})\s*([0-9]*)\s*([0-9]*)\s*(([0-9]*\.[0-9]+)|([0-9]+\.))(ms)\s*(([0-9]*\.[0-9]+)|([0-9]+\.))(ms)\s*(([0-9]*\.[0-9]+)|([0-9]+\.))(ms)\s*(([0-9]*\.[0-9]+)|([0-9]+\.))(ms)
-
 	for _, tn := range t {
 		wg.Add(1)
 		go func(tn1 *agent_models.MtrTarget) {
 			defer wg.Done()
-			err := CheckMTR(tn1, 5)
+			err := CheckMTR(tn1, 15)
 			if err != nil {
 				log.Error(err)
 			}
@@ -37,14 +35,20 @@ func TestMtrTargets(t []*agent_models.MtrTarget, triggered bool) {
 
 func CheckMTR(t *agent_models.MtrTarget, duration int) error {
 	var cmd *exec.Cmd
+	var regx string
 	switch OsDetect {
 	case "windows":
 		log.Println("Windows")
 		break
 	case "darwin":
 		log.Println("OSX")
-		args := []string{"-c", "./lib/ethr_osx -x " + t.Address + " -p tcp -t mtr -d ", string(duration), "s -4"}
+		args := []string{"-c", "traceroute " + t.Address}
 		cmd = exec.CommandContext(context.TODO(), "/bin/bash", args...)
+		// (\d+)\s+(((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}|())\s*([(]((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}[)]|())\s+(((\d+.\d+)\s+([a-z]+))|([*]))\s+(((\d+.\d+)\s+([a-z]+))|([*]))\s+(((\d+.\d+)\s+([a-z]+))|([*]))
+
+		regx = "(\\d+)\\s+" +
+			"(((25[0-5]|(2[0-4]|1\\d|[1-9]|)\\d)\\.?\\b){4}|())\\s*" +
+			"([(]((25[0-5]|(2[0-4]|1\\d|[1-9]|)\\d)\\.?\\b){4}[)]|())\\s+(((\\d+.\\d+)\\s+([a-z]+))|([*]))\\s+(((\\d+.\\d+)\\s+([a-z]+))|([*]))\\s+(((\\d+.\\d+)\\s+([a-z]+))|([*]))"
 		break
 	case "linux":
 		log.Println("Linux")
@@ -53,6 +57,8 @@ func CheckMTR(t *agent_models.MtrTarget, duration int) error {
 		log.Fatalf("Unknown OS")
 	}
 
+	cmd.Wait()
+
 	out, err := cmd.CombinedOutput()
 	fmt.Printf("%s\n", out)
 	if err != nil {
@@ -60,29 +66,33 @@ func CheckMTR(t *agent_models.MtrTarget, duration int) error {
 		return err
 	}
 
-	ethrOutput := strings.Split(string(out), "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -")
-
-	regex := regexp.MustCompile("([0-9]*).{4}(((25[0-5]|(2[0-4]|1\\d|[1-9]|)\\d)\\.?\\b){4})\\s*([0-9]*)\\s*([0-9]*)\\s*(([0-9]*\\.[0-9]+)|([0-9]+\\.))(ms)\\s*(([0-9]*\\.[0-9]+)|([0-9]+\\.))(ms)\\s*(([0-9]*\\.[0-9]+)|([0-9]+\\.))(ms)\\s*(([0-9]*\\.[0-9]+)|([0-9]+\\.))(ms)\n")
+	regex := *regexp.MustCompile(regx) // worst
 	if err != nil {
 		return err
 	}
-	hops := regex.Split(ethrOutput[1], -1)
 
-	for _, hop := range hops {
-		result := regex.FindAll([]byte(hop), -1)
-		if err != nil {
-			return err
+	ethrLines := strings.Split(string(out), "\n")
+
+	t.Result.Metrics = make(map[int]agent_models.MtrMetrics)
+
+	for n, ethrLine := range ethrLines {
+		if n <= 0 || ethrLine == "" {
+			continue
 		}
 
+		dataMatch := regex.FindStringSubmatch(ethrLine)
+
+		log.Infof("%s", dataMatch)
+
 		// hop num = result[1]
-		t.Result.Mtr[convHandleStrInt(string(result[0][1]))] = agent_models.MtrHop{
-			Address:  string(result[1]),
-			Sent:     convHandleStrInt(string(result[0][5])),
-			Received: convHandleStrInt(string(result[0][6])),
-			Last:     string(result[0][8]),
-			Avg:      string(result[0][9]),
-			Best:     string(result[0][10]),
-			Worst:    string(result[0][11]),
+		t.Result.Metrics[convHandleStrInt(dataMatch[1])] = agent_models.MtrMetrics{
+			Address:  dataMatch[2],
+			Sent:     0,
+			Received: 0,
+			Last:     dataMatch[14],
+			Avg:      dataMatch[20],
+			Best:     dataMatch[26],
+			Worst:    dataMatch[32],
 		}
 	}
 
@@ -93,4 +103,83 @@ func CheckMTR(t *agent_models.MtrTarget, duration int) error {
 	log.Warnf("%s", j)
 
 	return nil
+}
+
+// change to client controller check
+/*func CheckMTR(t *agent_models.MtrTarget, duration int) error {
+	var cmd *exec.Cmd
+	switch OsDetect {
+	case "windows":
+		log.Println("Windows")
+		break
+	case "darwin":
+		log.Println("OSX")
+		args := []string{"-c", "./lib/ethr_osx -no -w 1 -x " + t.Address + " -p icmp -t mtr -d " +
+			strconv.FormatInt(int64(duration), 10) + "s -4"}
+		cmd = exec.CommandContext(context.TODO(), "/bin/bash", args...)
+		break
+	case "linux":
+		log.Println("Linux")
+		break
+	default:
+		log.Fatalf("Unknown OS")
+	}
+
+	cmd.Wait()
+
+	out, err := cmd.CombinedOutput()
+	fmt.Printf("%s\n", out)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	ethrOutput := strings.Split(string(out), "- - - - - - - - - - - - - - - - - "+
+		"- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -")
+
+	regex := *regexp.MustCompile("\\s+(\\d+).{4}((((25[0-5]|(2[0-4]|1\\d|[1-9]|)\\d)\\.?\\b){4})|([?]{3}))\\s+((\\d+)|([-]))\\s+((\\d+)|([-]))\\s+(((([0-9]*\\.[0-9]+)|([0-9]+\\.))[a-z]+)|([-]))\\s+(((([0-9]*\\.[0-9]+)|([0-9]+\\.))[a-z]+)|([-]))\\s+(((([0-9]*\\.[0-9]+)|([0-9]+\\.))[a-z]+)|([-]))\\s+(((([0-9]*\\.[0-9]+)|([0-9]+\\.))[a-z]+)|([-]))") // worst
+	if err != nil {
+		return err
+	}
+
+	newestSample := strings.Split(ethrOutput[len(ethrOutput)-1], "Ethr done")
+	ethrLines := strings.Split(newestSample[0], "\n")
+
+	t.Result.Metrics = make(map[int]agent_models.MtrMetrics)
+
+	for n, ethrLine := range ethrLines {
+		if n == 1 || n <= 0 || ethrLine == "" {
+			continue
+		}
+
+		dataMatch := regex.FindStringSubmatch(ethrLine)
+
+		log.Infof("%s", dataMatch)
+
+		// hop num = result[1]
+		t.Result.Metrics[convHandleStrInt(dataMatch[1])] = agent_models.MtrMetrics{
+			Address:  dataMatch[2],
+			Sent:     mtrNumDashCheck(dataMatch[8]),
+			Received: mtrNumDashCheck(dataMatch[11]),
+			Last:     dataMatch[14],
+			Avg:      dataMatch[20],
+			Best:     dataMatch[26],
+			Worst:    dataMatch[32],
+		}
+	}
+
+	j, err := json.Marshal(t.Result)
+	if err != nil {
+		return err
+	}
+	log.Warnf("%s", j)
+
+	return nil
+}*/
+
+func mtrNumDashCheck(str string) int {
+	if str == "-" {
+		return 0
+	}
+	return convHandleStrInt(str)
 }

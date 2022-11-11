@@ -7,6 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -22,7 +23,8 @@ func CheckICMP(t *agent_models.IcmpTarget, duration int) error {
 		break
 	case "darwin":
 		log.Println("OSX")
-		args := []string{"-c", "./lib/ethr_osx -x " + t.Address + " -p icmp -t pi -d " + string(duration) + "s -4"}
+		args := []string{"-c", "./lib/ethr_osx -no -w 1 -x " + t.Address + " -p icmp -t pi -d " +
+			strconv.FormatInt(int64(duration), 10) + "s -4"}
 		cmd = exec.CommandContext(context.TODO(), "/bin/bash", args...)
 		break
 	case "linux":
@@ -48,14 +50,14 @@ func CheckICMP(t *agent_models.IcmpTarget, duration int) error {
 	if err != nil {
 		return err
 	}
-	compile2, err := regexp.Compile("(([0-9]*\\.[0-9]+)|([0-9]+\\.))(ms)\n")
+	compile2, err := regexp.Compile("(([0-9]*\\.[0-9]+)|([0-9]+\\.))(ms)")
 	if err != nil {
 		return err
 	}
 	metrics2 := compile2.FindAllString(ethrOutput[2], -1)
-	if err != nil {
-		return err
-	}
+
+	log.Printf("%s", metrics1)
+	log.Printf("%s", metrics2)
 
 	t.Result.Metrics = agent_models.IcmpMetrics{
 		Avg:         metrics2[0],
@@ -88,7 +90,6 @@ func TestIcmpTargets(t []*agent_models.IcmpTarget, interval int) {
 			defer wg.Done()
 			err := CheckICMP(tn1, interval)
 			if err != nil {
-				//  read ip 0.0.0.0: raw-read ip4 0.0.0.0: i/o timeout
 				log.Errorf("%s", err)
 			}
 			tn1.Result.StopTimestamp = time.Now()
