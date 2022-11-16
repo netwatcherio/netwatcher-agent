@@ -137,7 +137,7 @@ func TestMtrTargets(t []*agent_models.MtrTarget, triggered bool) {
 	return nil
 }*/
 
-// change to client controller check
+// CheckMTR change to client controller check
 func CheckMTR(t *agent_models.MtrTarget, duration int) error {
 	var cmd *exec.Cmd
 	switch OsDetect {

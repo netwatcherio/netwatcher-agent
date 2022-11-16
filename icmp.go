@@ -50,7 +50,7 @@ func CheckICMP(t *agent_models.IcmpTarget, duration int) error {
 	if err != nil {
 		return err
 	}
-	compile2, err := regexp.Compile("(([0-9]*\\.[0-9]+)|([0-9]+\\.))(ms)")
+	compile2, err := regexp.Compile("(([0-9]*\\.[0-9]+)|([0-9]+\\.))(?:ms)")
 	if err != nil {
 		return err
 	}
