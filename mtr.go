@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"github.com/netwatcherio/netwatcher-agent/agent_models"
 	log "github.com/sirupsen/logrus"
 	"os/exec"
@@ -14,24 +12,25 @@ import (
 	"time"
 )
 
-func TestMtrTargets(t []*agent_models.MtrTarget, triggered bool) {
+func TestMtrTargets(t []string, triggered bool) (out chan agent_models.MtrTarget) {
 	var wg sync.WaitGroup
 
-	for _, tn := range t {
+	out = make(chan agent_models.MtrTarget, len(t))
+	defer close(out)
+	for i := range t {
 		wg.Add(1)
-		go func(tn1 *agent_models.MtrTarget) {
+		go func(tt string) {
 			defer wg.Done()
-			err := CheckMTR(tn1, 15)
+			err := CheckMTR(tt, 15, triggered, out)
 			if err != nil {
 				log.Error(err)
 			}
-
-			tn1.Result.StopTimestamp = time.Now()
-			tn1.Result.Triggered = triggered
-		}(tn)
+		}(t[i])
 	}
 
 	wg.Wait()
+
+	return
 }
 
 /*func CheckMTR(t *agent_models.MtrTarget, duration int) error {
@@ -138,7 +137,9 @@ func TestMtrTargets(t []*agent_models.MtrTarget, triggered bool) {
 }*/
 
 // CheckMTR change to client controller check
-func CheckMTR(t *agent_models.MtrTarget, duration int) error {
+func CheckMTR(host string, duration int, triggered bool, out chan agent_models.MtrTarget) error {
+	startTime := time.Now()
+
 	var cmd *exec.Cmd
 	switch OsDetect {
 	case "windows":
@@ -146,7 +147,7 @@ func CheckMTR(t *agent_models.MtrTarget, duration int) error {
 		break
 	case "darwin":
 		log.Println("OSX")
-		args := []string{"-c", "./lib/ethr_osx -no -w 1 -x " + t.Address + " -p icmp -t mtr -d " +
+		args := []string{"-c", "./lib/ethr_osx -no -w 1 -x " + host + " -p icmp -t mtr -d " +
 			strconv.FormatInt(int64(duration), 10) + "s -4"}
 		cmd = exec.CommandContext(context.TODO(), "/bin/bash", args...)
 		break
@@ -157,25 +158,31 @@ func CheckMTR(t *agent_models.MtrTarget, duration int) error {
 		log.Fatalf("Unknown OS")
 	}
 
-	cmd.Wait()
-
-	out, err := cmd.CombinedOutput()
-	fmt.Printf("%s\n", out)
+	output, err := cmd.CombinedOutput()
+	// fmt.Printf("%s\n", output)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
-	ethrOutput := strings.Split(string(out), "- - - - - - - - - - - - - - - - - "+
+	ethrOutput := strings.Split(string(output), "- - - - - - - - - - - - - - - - - "+
 		"- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -")
 
-	regex := *regexp.MustCompile("(\\d+).{4}((((25[0-5]|(2[0-4]|1\\d|[1-9]|)\\d)\\.?\\b){4})|([?]{3}))\\s+((\\d+)|([-]))\\s+((\\d+)|([-]))\\s+(((([0-9]*\\.[0-9]+)|([0-9]+\\.))[a-z]+)|([-]))\\s+(((([0-9]*\\.[0-9]+)|([0-9]+\\.))[a-z]+)|([-]))\\s+(((([0-9]*\\.[0-9]+)|([0-9]+\\.))[a-z]+)|([-]))\\s+(((([0-9]*\\.[0-9]+)|([0-9]+\\.))[a-z]+)|([-]))") // worst
+	regex := *regexp.MustCompile("(\\d+).{4}" +
+		"((((25[0-5]|(2[0-4]|1\\d|[1-9]|)\\d)\\.?\\b){4})|([?]{3}))\\s+" +
+		"((\\d+)|([-]))\\s+((\\d+)|([-]))\\s+(((([0-9]*\\.[0-9]+)|([0-9]+\\.))[a-z]+)|([-]))\\s+" +
+		"(((([0-9]*\\.[0-9]+)|([0-9]+\\.))[a-z]+)|([-]))\\s+" +
+		"(((([0-9]*\\.[0-9]+)|([0-9]+\\.))[a-z]+)|([-]))\\s+" +
+		"(((([0-9]*\\.[0-9]+)|([0-9]+\\.))[a-z]+)|([-]))") // worst
 	if err != nil {
 		return err
 	}
 
 	newestSample := strings.Split(ethrOutput[len(ethrOutput)-1], "Ethr done")
 	ethrLines := strings.Split(newestSample[0], "\n")
+
+	t := agent_models.MtrTarget{}
+	t.Result.StartTimestamp = startTime
 
 	t.Result.Metrics = make(map[int]agent_models.MtrMetrics)
 
@@ -199,12 +206,16 @@ func CheckMTR(t *agent_models.MtrTarget, duration int) error {
 			Worst:    dataMatch[32],
 		}
 	}
+	t.Address = host
+	t.Result.StopTimestamp = time.Now()
+	t.Result.Triggered = triggered
+	// fmt.Printf("%s", j)
+	// j, err := json.Marshal(t.Result)
+	// if err != nil {
+	// 	return err
+	// }
 
-	j, err := json.Marshal(t.Result)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("%s", j)
+	out <- t
 
 	return nil
 }

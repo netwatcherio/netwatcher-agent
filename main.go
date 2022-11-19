@@ -1,9 +1,10 @@
 package main
 
 import (
-	"github.com/netwatcherio/netwatcher-agent/agent_models"
 	log "github.com/sirupsen/logrus"
 	"os"
+	"os/signal"
+	"runtime"
 	"sync"
 	"time"
 )
@@ -47,6 +48,17 @@ func main() {
 		os.Exit(1)
 	}()*/
 
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+
+	go func() {
+		for _ = range c {
+			shutdown()
+			return
+		}
+	}()
+
+	OsDetect = runtime.GOOS
 	ApiUrl = os.Getenv("API_URL")
 	if ApiUrl == "" {
 		log.Fatal("You must insert the API URL")
@@ -55,42 +67,13 @@ func main() {
 	var wg sync.WaitGroup
 	log.Infof("Starting NetWatcher Agent...")
 	log.Infof("Starting microsoft/ethr logging...")
-
-	var agentConfig *agent_models.AgentConfig
-
-	wg.Add(1)
-
-	go func() {
-		defer wg.Done()
-		// Run forever if needed
-		for {
-			// A local reference to the agent config
-			var conf *agent_models.AgentConfig
-			// Attempt to pull the agent config
-			conf, err = GetConfig()
-			// If an error occurs, a message is logged to console and the loop repeats after one minute
-			if err != nil {
-				log.WithError(err).Warnf("Unable to fetch configuration, trying again in 1 minutes")
-				time.Sleep(time.Minute)
-				continue
-			}
-			// If there was no error, then the agent config is set
-			agentConfig = conf
-
-			log.Infof("Loaded %d agents", len(conf.AgentTargets))
-
-		}
-	}()
-
 	wg.Wait()
 
-	StartScheduler(agentConfig)
+	StartScheduler()
 
-	wg.Wait()
 }
 
 func shutdown() {
-
+	log.Fatalf("Currently %d threads", runtime.NumGoroutine())
 	log.Fatal("Shutting down NetWatcher Agent...")
-
 }
