@@ -1,0 +1,8 @@
+config.conf
+*.so
+*.key
+*.pem
+*.crt
+*.o
+.DS_Store
+*.sum
