@@ -21,7 +21,8 @@ var (
 )
 
 var (
-	ApiUrl string
+	ApiUrl   string
+	OsDetect string
 )
 
 // todo implement nmap and iperf to main agents
