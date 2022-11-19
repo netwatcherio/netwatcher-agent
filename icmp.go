@@ -1,41 +1,85 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"github.com/netwatcherio/netwatcher-agent/agent_models"
 	log "github.com/sirupsen/logrus"
-	"github.com/tonobo/mtr/pkg/icmp"
-	"math"
-	"math/rand"
-	"net"
+	"os/exec"
+	"regexp"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
 
 // TODO DSCP Tags? https://github.com/rclone/rclone/issues/755
 
-func CheckICMP(t *agent_models.IcmpTarget) (agent_models.IcmpData, error) {
-	ipAddr := net.IPAddr{IP: net.ParseIP(t.Address)}
+func CheckICMP(t *agent_models.IcmpTarget, duration int) error {
+	var cmd *exec.Cmd
+	switch OsDetect {
+	case "windows":
+		log.Println("Windows")
+		break
+	case "darwin":
+		log.Println("OSX")
+		args := []string{"-c", "./lib/ethr_osx -no -w 1 -x " + t.Address + " -p icmp -t pi -d " +
+			strconv.FormatInt(int64(duration), 10) + "s -4"}
+		cmd = exec.CommandContext(context.TODO(), "/bin/bash", args...)
+		break
+	case "linux":
+		log.Println("Linux")
+		break
+	default:
+		log.Fatalf("Unknown OS")
+	}
 
-	seq := rand.Intn(math.MaxUint16)
-	id := rand.Intn(math.MaxUint16) & 0xffff
-	hop, err := icmp.SendICMP(srcAddr, &ipAddr, t.Address, ttl, id, timeout, seq)
+	out, err := cmd.CombinedOutput()
+	fmt.Printf("%s\n", out)
 	if err != nil {
-		return agent_models.IcmpData{
-			Success:   false,
-			Timestamp: time.Now(),
-		}, err
+		log.Error(err)
+		return err
 	}
 
-	icmpData := agent_models.IcmpData{
-		Elapsed:   hop.Elapsed,
-		Success:   hop.Success,
-		Timestamp: time.Now(),
+	compile1, err := regexp.Compile(".=.(.)")
+	if err != nil {
+		return err
+	}
+	ethrOutput := strings.Split(string(out), "-----------------------------------------------------------------------------------------")
+	metrics1 := compile1.FindAllString(ethrOutput[1], -1)
+	if err != nil {
+		return err
+	}
+	compile2, err := regexp.Compile("(([0-9]*\\.[0-9]+)|([0-9]+\\.))(?:ms)")
+	if err != nil {
+		return err
+	}
+	metrics2 := compile2.FindAllString(ethrOutput[2], -1)
+
+	log.Printf("%s", metrics1)
+	log.Printf("%s", metrics2)
+
+	t.Result.Metrics = agent_models.IcmpMetrics{
+		Avg:         metrics2[0],
+		Min:         metrics2[1],
+		Max:         metrics2[8],
+		Sent:        convHandleStrInt(metrics1[0]),
+		Received:    convHandleStrInt(metrics1[1]),
+		Loss:        convHandleStrInt(metrics1[2]),
+		Percent50:   metrics2[2],
+		Percent90:   metrics2[3],
+		Percent95:   metrics2[4],
+		Percent99:   metrics2[5],
+		Percent999:  metrics2[6],
+		Percent9999: metrics2[7],
 	}
 
-	return icmpData, nil
+	// todo regex 🤪
+
+	return nil
 }
 
-func TestIcmpTargets(t []*agent_models.IcmpTarget, count int, interval int) {
+func TestIcmpTargets(t []*agent_models.IcmpTarget, interval int) {
 	var wg sync.WaitGroup
 
 	log.Infof("len %v", len(t))
@@ -44,108 +88,15 @@ func TestIcmpTargets(t []*agent_models.IcmpTarget, count int, interval int) {
 		wg.Add(1)
 		go func(tn1 *agent_models.IcmpTarget) {
 			defer wg.Done()
-			for i := 0; i < count; i++ {
-				icmp, err := CheckICMP(tn1)
-				if err != nil {
-					//  read ip 0.0.0.0: raw-read ip4 0.0.0.0: i/o timeout
-					log.Errorf("%s", err)
-				}
-				tn1.Result.Data = append(tn1.Result.Data, icmp)
-				tn1.Result.StopTimestamp = time.Now()
-				time.Sleep(time.Duration(int(time.Second) * interval))
+			err := CheckICMP(tn1, interval)
+			if err != nil {
+				log.Errorf("%s", err)
 			}
+			tn1.Result.StopTimestamp = time.Now()
+			// "sleep" is handled by ethr because it would be running the test
+			// otherwise it would throw an error.
 			log.Infof("ending icmp for %s", tn1.Address)
 		}(tn)
-	}
-	wg.Wait()
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		calculateMetrics(t)
-	}()
-	wg.Wait()
-}
-
-func calculateMetrics(t []*agent_models.IcmpTarget) {
-	var wg sync.WaitGroup
-
-	for n := range t {
-		wg.Add(4)
-		// Latency Average
-		go func(tn *agent_models.IcmpTarget) {
-			defer wg.Done()
-			var average = 0
-			// TODO take into account the packet loss (if any?)
-			for _, m := range tn.Result.Data {
-				average = average + int(m.Elapsed)
-			}
-			tn.Result.Metrics.LatencyAverage = time.Duration(average / len(tn.Result.Data))
-		}(t[n])
-		// Latency Maximum
-		go func(tn *agent_models.IcmpTarget) {
-			defer wg.Done()
-			var max = 0
-			for _, m := range tn.Result.Data {
-				if max < int(m.Elapsed) {
-					max = int(m.Elapsed)
-				}
-			}
-			tn.Result.Metrics.LatencyMax = time.Duration(max)
-		}(t[n])
-		// Latency Minimum
-		go func(tn *agent_models.IcmpTarget) {
-			defer wg.Done()
-			var min = 0
-			for _, m := range tn.Result.Data {
-				if min == 0 {
-					min = int(m.Elapsed)
-				} else if min > int(m.Elapsed) {
-					min = int(m.Elapsed)
-				}
-			}
-			tn.Result.Metrics.LatencyMin = time.Duration(min)
-		}(t[n])
-		// Packet Loss Percentage
-		go func(tn *agent_models.IcmpTarget) {
-			defer wg.Done()
-			var lossPercent = 0
-			for _, m := range tn.Result.Data {
-				if !m.Success {
-					lossPercent++
-				}
-			}
-			tn.Result.Metrics.LossPercent = (lossPercent / len(tn.Result.Data)) * 100
-		}(t[n])
-		// Jitter Average
-		/*go func(tn *agent_models.IcmpTarget) {
-			defer wg.Done()
-			var jitterAvg = 0
-			var prev = 0
-			var jitterC = 0
-			//var jitterVals []int
-			for _, m := range tn.Result.Data {
-				if m.Success {
-					if prev == 0 {
-						prev = int(m.Elapsed)
-					} else {
-						if prev > int(m.Elapsed) {
-							jitterAvg = jitterAvg + (prev - int(m.Elapsed))
-							jitterC = jitterC + 1
-							//jitterVals = append(jitterVals, jitterValVPrev)
-						} else if int(m.Elapsed) > prev {
-							jitterAvg = jitterAvg + (int(m.Elapsed) - prev)
-							jitterC = jitterC + 1
-							//jitterVals = append(jitterVals, jitterValVPrev)
-						}
-						prev = int(m.Elapsed)
-					}
-				}
-			}
-			if jitterC > 0 && jitterAvg > 0 {
-				tn.Result.Metrics.JitterAverage = time.Duration(jitterAvg / jitterC)
-			}
-		}(t[n])*/
-		// TODO jitter max, and jitter 95 percentile
 	}
 	wg.Wait()
 }
