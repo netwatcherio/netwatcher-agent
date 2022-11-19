@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/netwatcherio/ethr"
 	"github.com/netwatcherio/netwatcher-agent/agent_models"
 	log "github.com/sirupsen/logrus"
 	"os"
@@ -55,17 +54,6 @@ func main() {
 	var wg sync.WaitGroup
 	log.Infof("Starting NetWatcher Agent...")
 	log.Infof("Starting microsoft/ethr logging...")
-
-	var nonCliConfig = &ethr.NonCliConfig{}
-	ethr.RunEthr(false, nonCliConfig)
-
-	// Launch a new thread to print out errors from the log channel
-	go func() {
-		// For every message in the LogChan, print it and wait for another
-		for msg := range ethr.LogChan {
-			log.Warnf("%s", msg)
-		}
-	}()
 
 	var agentConfig *agent_models.AgentConfig
 
