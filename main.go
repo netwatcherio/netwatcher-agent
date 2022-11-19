@@ -1,9 +1,6 @@
 package main
 
 import (
-	"errors"
-	"fmt"
-	"github.com/joho/godotenv"
 	"github.com/netwatcherio/ethr"
 	"github.com/netwatcherio/netwatcher-agent/agent_models"
 	log "github.com/sirupsen/logrus"
@@ -28,30 +25,17 @@ var (
 	ApiUrl string
 )
 
-//todo implement nmap and iperf to main agents
+// todo implement nmap and iperf to main agents
 
 func main() {
-	var err error
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	log.SetFormatter(&log.TextFormatter{})
 
-	_, err = os.Stat("./config.conf")
-	if errors.Is(err, os.ErrNotExist) {
-		fmt.Println("file does not exist")
-		// To start, here's how to dump a string (or just
-		// bytes) into a file.
-		_, err := os.Create("./config.conf")
-		d1 := []byte("API_URL=*PUT URL HERE*\nPIN=*PUT PIN HERE*\nHASH=\n")
-		err = os.WriteFile("./config.conf", d1, 0644)
-		if err != nil {
-			log.Fatal("Cannot create configuration.")
-		}
+	err := setup()
+	if err != nil {
+		log.WithError(err).Fatal("An unexpected error occurred while configuring the agent")
+		return
 	}
-
-	godotenv.Load("config.conf")
 
 	/*signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGTERM)
@@ -74,38 +58,50 @@ func main() {
 
 	var nonCliConfig = &ethr.NonCliConfig{}
 	ethr.RunEthr(false, nonCliConfig)
-	var agentConfig *agent_models.AgentConfig
 
-	ethrLogChan := <-ethr.LogChan
+	// Launch a new thread to print out errors from the log channel
 	go func() {
-		for true {
-			log.Warnf("%s", ethrLogChan)
+		// For every message in the LogChan, print it and wait for another
+		for msg := range ethr.LogChan {
+			log.Warnf("%s", msg)
 		}
 	}()
 
+	var agentConfig *agent_models.AgentConfig
+
 	wg.Add(1)
+
 	go func() {
 		defer wg.Done()
-		var received = false
-		for !received {
-			conf, err := GetConfig()
-			if err == nil {
-				received = true
-				agentConfig = conf
-				log.Infof("Pulled configuration on start up")
-			} else {
-				log.Errorf("Unable to fetch configuration")
+		// Run forever if needed
+		for {
+			// A local reference to the agent config
+			var conf *agent_models.AgentConfig
+			// Attempt to pull the agent config
+			conf, err = GetConfig()
+			// If an error occurs, a message is logged to console and the loop repeats after one minute
+			if err != nil {
+				log.WithError(err).Warnf("Unable to fetch configuration, trying again in 1 minutes")
 				time.Sleep(time.Minute)
+				continue
 			}
+			// If there was no error, then the agent config is set
+			agentConfig = conf
+
+			log.Infof("Loaded %d agents", len(conf.AgentTargets))
+
 		}
 	}()
 
 	wg.Wait()
+
 	StartScheduler(agentConfig)
 
 	wg.Wait()
 }
 
 func shutdown() {
+
 	log.Fatal("Shutting down NetWatcher Agent...")
+
 }

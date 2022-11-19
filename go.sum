@@ -18,6 +18,8 @@ github.com/mattn/go-runewidth v0.0.9 h1:Lm995f3rfxdpd6TSmuVCHVb/QhupuXlYr8sCI/Qd
 github.com/mattn/go-runewidth v0.0.9/go.mod h1:H031xJmbD/WCDINGzjvQ9THkh0rPKHF+m2gUSrubnMI=
 github.com/netwatcherio/ethr v0.0.0-20220926163803-bbc7b8f1b358 h1:H+Qk1vwzXQl+P7sdQQe7MZ9hk1ST57niFfDiBqZyf40=
 github.com/netwatcherio/ethr v0.0.0-20220926163803-bbc7b8f1b358/go.mod h1:mNjrxlzMOyzah0IZbGGzTzCZIBqNDzEEmDQNY89UItw=
+github.com/netwatcherio/ethr v0.0.0-20220926172535-595b400f7894 h1:lGorcqBGHzzM2gqP04NDmohCm3GmNKowZEoKvdsYYcw=
+github.com/netwatcherio/ethr v0.0.0-20220926172535-595b400f7894/go.mod h1:mNjrxlzMOyzah0IZbGGzTzCZIBqNDzEEmDQNY89UItw=
 github.com/nsf/termbox-go v0.0.0-20200418040025-38ba6e5628f1 h1:lh3PyZvY+B9nFliSGTn5uFuqQQJGuNrD0MLCokv09ag=
 github.com/nsf/termbox-go v0.0.0-20200418040025-38ba6e5628f1/go.mod h1:IuKpRQcYE1Tfu+oAQqaLisqDeXgjyyltCfsaoYN18NQ=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
