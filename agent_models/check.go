@@ -1,7 +1,6 @@
 package agent_models
 
 import (
-	"github.com/tonobo/mtr/pkg/mtr"
 	"time"
 )
 
@@ -25,36 +24,5 @@ type SpeedTestInfo struct {
 	ULSpeed   float64       `json:"ul_speed"bson:"ul_speed"`
 	Server    string        `json:"server"bson:"server"`
 	Host      string        `json:"host"bson:"host"`
-	Timestamp time.Time     `json:"timestamp"bson:"timestamp"`
-}
-
-type MtrTarget struct {
-	Address string `json:"address"bson:"address"`
-	Result  struct {
-		Triggered      bool      `json:"triggered"bson:"triggered"`
-		Mtr            mtr.MTR   `json:"mtr"bson:"mtr"`
-		StartTimestamp time.Time `json:"start_timestamp"bson:"start_timestamp"`
-		StopTimestamp  time.Time `json:"stop_timestamp"bson:"stop_timestamp"`
-	} `json:"result"bson:"result"`
-}
-
-type IcmpTarget struct {
-	Address string `json:"address"bson:"address"`
-	Result  struct {
-		StartTimestamp time.Time  `json:"start_timestamp"bson:"start_timestamp"`
-		StopTimestamp  time.Time  `json:"stop_timestamp"bson:"stop_timestamp"`
-		Data           []IcmpData `json:"data"bson:"data"`
-		Metrics        struct {
-			LatencyAverage time.Duration `json:"latency_average"bson:"latency_average"`
-			LatencyMax     time.Duration `json:"latency_max"bson:"latency_max"`
-			LatencyMin     time.Duration `json:"latency_min"bson:"latency_min"`
-			LossPercent    int           `json:"loss_percent"bson:"loss_percent"`
-		} `json:"metrics"bson:"metrics"`
-	} `json:"result"bson:"result"`
-}
-
-type IcmpData struct {
-	Elapsed   time.Duration `json:"elapsed"bson:"elapsed"'`
-	Success   bool          `json:"success"bson:"success"`
 	Timestamp time.Time     `json:"timestamp"bson:"timestamp"`
 }

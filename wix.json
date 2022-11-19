@@ -6,7 +6,8 @@
   "files": {
     "guid": "b9fbd6ee-fda2-4675-99bf-172d09a75307",
     "items": [
-      "./bin/windows/netwatcher-agent.exe"
+      "./bin/windows/netwatcher-agent.exe",
+      "./lib/ethr_windows.exe"
     ]
   },
   "env": {
