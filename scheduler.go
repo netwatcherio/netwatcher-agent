@@ -201,34 +201,27 @@ func runSpeedTestCheck(config *agent_models.AgentConfig) {
 }
 
 func runIcmpCheck(t *agent_models.AgentConfig, count int) {
-
-	var pingTargets []*agent_models.IcmpTarget
-
-	for i, n := range t.PingTargets {
-		pingTargets = append(pingTargets, &agent_models.IcmpTarget{
-			Address: n,
-		})
-		pingTargets[i].Result.StartTimestamp = time.Now()
-	}
-
 	log.Infof("Running ICMP check...")
 	if t.PingInterval < 2 {
 		t.PingInterval = 2
 	}
-	TestIcmpTargets(pingTargets, t.PingInterval)
+	c := TestIcmpTargets(t.PingTargets, t.PingInterval)
 
-	for _, st := range pingTargets {
-		_, err := json.Marshal(st)
+	var targets []*agent_models.IcmpTarget
+
+	for target := range c {
+		j, err := json.Marshal(target)
 		if err != nil {
-			log.Errorf("%s", err)
+			log.Fatal(err)
 		}
-		// fmt.Printf("%s\n", string(j))
+		targets = append(targets, &target)
+		fmt.Printf("%s\n", string(j))
 	}
 
 	// Upload to server, check if it fails or not,
 	// then if it does, save to temporary list
 	// for later upload
-	resp, err := PostIcmp(pingTargets)
+	resp, err := PostIcmp(targets)
 	if err != nil || resp.Response != 200 {
 		// TODO save to queue
 		log.Errorf("Failed to push ICMP information.")

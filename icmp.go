@@ -15,7 +15,12 @@ import (
 
 // TODO DSCP Tags? https://github.com/rclone/rclone/issues/755
 
-func CheckICMP(t *agent_models.IcmpTarget, duration int) error {
+func CheckICMP(t string, duration int, out chan agent_models.IcmpTarget) error {
+	var icmpTarget = agent_models.IcmpTarget{
+		Address: t,
+	}
+	icmpTarget.Result.StartTimestamp = time.Now()
+
 	var cmd *exec.Cmd
 	switch OsDetect {
 	case "windows":
@@ -23,7 +28,7 @@ func CheckICMP(t *agent_models.IcmpTarget, duration int) error {
 		break
 	case "darwin":
 		log.Println("OSX")
-		args := []string{"-c", "./lib/ethr_osx -no -w 1 -x " + t.Address + " -p icmp -t pi -d " +
+		args := []string{"-c", "./lib/ethr_osx -no -w 1 -x " + t + " -p icmp -t pi -d " +
 			strconv.FormatInt(int64(duration), 10) + "s -4"}
 		cmd = exec.CommandContext(context.TODO(), "/bin/bash", args...)
 		break
@@ -34,7 +39,7 @@ func CheckICMP(t *agent_models.IcmpTarget, duration int) error {
 		log.Fatalf("Unknown OS")
 	}
 
-	out, err := cmd.CombinedOutput()
+	cmdOut, err := cmd.CombinedOutput()
 	fmt.Printf("%s\n", out)
 	if err != nil {
 		log.Error(err)
@@ -45,7 +50,7 @@ func CheckICMP(t *agent_models.IcmpTarget, duration int) error {
 	if err != nil {
 		return err
 	}
-	ethrOutput := strings.Split(string(out), "-----------------------------------------------------------------------------------------")
+	ethrOutput := strings.Split(string(cmdOut), "-----------------------------------------------------------------------------------------")
 	metrics1 := compile1.FindAllString(ethrOutput[1], -1)
 	if err != nil {
 		return err
@@ -59,7 +64,7 @@ func CheckICMP(t *agent_models.IcmpTarget, duration int) error {
 	log.Printf("%s", metrics1)
 	log.Printf("%s", metrics2)
 
-	t.Result.Metrics = agent_models.IcmpMetrics{
+	icmpTarget.Result.Metrics = agent_models.IcmpMetrics{
 		Avg:         metrics2[0],
 		Min:         metrics2[1],
 		Max:         metrics2[8],
@@ -73,30 +78,28 @@ func CheckICMP(t *agent_models.IcmpTarget, duration int) error {
 		Percent999:  metrics2[6],
 		Percent9999: metrics2[7],
 	}
+	icmpTarget.Result.StopTimestamp = time.Now()
+
+	out <- icmpTarget
 
 	// todo regex 🤪
-
 	return nil
 }
 
-func TestIcmpTargets(t []*agent_models.IcmpTarget, interval int) {
+func TestIcmpTargets(t []string, interval int) (out chan agent_models.IcmpTarget) {
 	var wg sync.WaitGroup
 
-	log.Infof("len %v", len(t))
-	for _, tn := range t {
-		log.Infof("starting icmp for %s", tn.Address)
+	defer close(out)
+	for i := range t {
 		wg.Add(1)
-		go func(tn1 *agent_models.IcmpTarget) {
+		go func(tn1 string) {
 			defer wg.Done()
-			err := CheckICMP(tn1, interval)
+			err := CheckICMP(tn1, interval, out)
 			if err != nil {
 				log.Errorf("%s", err)
 			}
-			tn1.Result.StopTimestamp = time.Now()
-			// "sleep" is handled by ethr because it would be running the test
-			// otherwise it would throw an error.
-			log.Infof("ending icmp for %s", tn1.Address)
-		}(tn)
+		}(t[i])
 	}
 	wg.Wait()
+	return
 }
