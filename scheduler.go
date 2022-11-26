@@ -44,11 +44,11 @@ func StartScheduler() {
 func runChecks(agentConfig agent_models.AgentConfig) {
 	var wg sync.WaitGroup
 
-	wg.Add(1)
+	/*wg.Add(1)
 	go func() {
 		defer wg.Done()
-		runIcmpCheck(&agentConfig, 30)
-	}()
+		runIcmpCheck(&agentConfig)
+	}()*/
 
 	wg.Add(1)
 	go func() {
@@ -171,32 +171,28 @@ func runSpeedTestCheck(config *agent_models.AgentConfig) {
 	// }
 }
 
-func runIcmpCheck(t *agent_models.AgentConfig, count int) {
-	log.Infof("Running ICMP check...")
-	if t.PingInterval < 2 {
-		t.PingInterval = 2
+func runIcmpCheck(t *agent_models.AgentConfig) {
+	for {
+		log.Infof("Running ICMP check...")
+		if t.PingInterval < 1 {
+			t.PingInterval = 1
+		}
+		t2, err := TestIcmpTargets(t.PingTargets, t.PingInterval*60)
+		if err != nil {
+			log.Error(err)
+		}
+
+		// Upload to server, check if it fails or not,
+		// then if it does, save to temporary list
+		// for later upload
+		resp, err := PostIcmp(t2)
+		if err != nil || resp.Response != 200 {
+			// TODO save to queue
+			log.Errorf("Failed to push ICMP information.")
+		}
+
+		if resp.Response == 200 {
+			log.Infof("Pushed ICMP information.")
+		}
 	}
-	c := TestIcmpTargets(t.PingTargets, t.PingInterval)
-
-	var targets []agent_models.IcmpTarget
-
-	for target := range c {
-		targets = append(targets, target)
-	}
-
-	// Upload to server, check if it fails or not,
-	// then if it does, save to temporary list
-	// for later upload
-	resp, err := PostIcmp(targets)
-	if err != nil || resp.Response != 200 {
-		// TODO save to queue
-		log.Errorf("Failed to push ICMP information.")
-	}
-
-	if resp.Response == 200 {
-		log.Infof("Pushed ICMP information.")
-	}
-
-	/*j, _ := json.Marshal(resp)
-	log.Infof("%s", j)*/
 }

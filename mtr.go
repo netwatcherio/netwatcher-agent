@@ -29,8 +29,8 @@ func TestMtrTargets(t []string, triggered bool) ([]*agent_models.MtrTarget, erro
 
 			ch <- target
 		}()
-		targets = append(targets, <-ch)
 	}
+	targets = append(targets, <-ch)
 	wg.Wait()
 	return targets, nil
 }

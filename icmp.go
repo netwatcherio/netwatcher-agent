@@ -15,8 +15,8 @@ import (
 
 // TODO DSCP Tags? https://github.com/rclone/rclone/issues/755
 
-func CheckICMP(t string, duration int, out chan agent_models.IcmpTarget) error {
-	var icmpTarget = agent_models.IcmpTarget{
+func CheckICMP(t string, duration int) (*agent_models.IcmpTarget, error) {
+	var icmpTarget = &agent_models.IcmpTarget{
 		Address: t,
 	}
 	icmpTarget.Result.StartTimestamp = time.Now()
@@ -40,61 +40,63 @@ func CheckICMP(t string, duration int, out chan agent_models.IcmpTarget) error {
 	fmt.Printf("%s\n", cmdOut)
 	if err != nil {
 		log.Error(err)
-		return err
+		return nil, err
 	}
 
 	compile1, err := regexp.Compile(".=.(.)")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	ethrOutput := strings.Split(string(cmdOut), "-----------------------------------------------------------------------------------------")
 	metrics1 := compile1.FindAllString(ethrOutput[1], -1)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	compile2, err := regexp.Compile("(([0-9]*\\.[0-9]+)|([0-9]+\\.))(?:ms)")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	metrics2 := compile2.FindAllString(ethrOutput[2], -1)
 
 	icmpTarget.Result.Metrics = agent_models.IcmpMetrics{
-		Avg:         metrics2[1],
-		Min:         metrics2[2],
-		Max:         metrics2[9],
+		Avg:         strings.ReplaceAll(strings.ReplaceAll(metrics2[1], " ", ""), "\n", ""),
+		Min:         strings.ReplaceAll(metrics2[2], " ", ""),
+		Max:         strings.ReplaceAll(metrics2[9], " ", ""),
 		Sent:        ConvHandleStrInt(metrics1[0]),
 		Received:    ConvHandleStrInt(metrics1[1]),
 		Loss:        ConvHandleStrInt(metrics1[2]),
-		Percent50:   metrics2[3],
-		Percent90:   metrics2[4],
-		Percent95:   metrics2[5],
-		Percent99:   metrics2[6],
-		Percent999:  metrics2[7],
-		Percent9999: metrics2[8],
+		Percent50:   strings.ReplaceAll(metrics2[3], " ", ""),
+		Percent90:   strings.ReplaceAll(metrics2[4], " ", ""),
+		Percent95:   strings.ReplaceAll(metrics2[5], " ", ""),
+		Percent99:   strings.ReplaceAll(metrics2[6], " ", ""),
+		Percent999:  strings.ReplaceAll(metrics2[7], " ", ""),
+		Percent9999: strings.ReplaceAll(metrics2[8], " ", ""),
 	}
 	icmpTarget.Result.StopTimestamp = time.Now()
 
-	out <- icmpTarget
-
 	// todo regex 🤪
-	return nil
+	return icmpTarget, nil
 }
 
-func TestIcmpTargets(t []string, interval int) (out chan agent_models.IcmpTarget) {
-	var wg sync.WaitGroup
+func TestIcmpTargets(t []string, length int) ([]*agent_models.IcmpTarget, error) {
+	var targets []*agent_models.IcmpTarget
 
-	out = make(chan agent_models.IcmpTarget, len(t))
-	defer close(out)
+	ch2 := make(chan *agent_models.IcmpTarget)
+
+	var wg sync.WaitGroup
 	for i := range t {
 		wg.Add(1)
-		go func(tn1 string) {
+		go func() {
 			defer wg.Done()
-			err := CheckICMP(tn1, interval, out)
+			target, err := CheckICMP(t[i], length)
 			if err != nil {
-				log.Errorf("%s", err)
+				log.Error(err)
 			}
-		}(t[i])
+
+			ch2 <- target
+		}()
 	}
+	targets = append(targets, <-ch2)
 	wg.Wait()
-	return
+	return targets, nil
 }
