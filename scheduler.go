@@ -44,11 +44,11 @@ func StartScheduler() {
 func runChecks(agentConfig agent_models.AgentConfig) {
 	var wg sync.WaitGroup
 
-	/*wg.Add(1)
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		runIcmpCheck(&agentConfig)
-	}()*/
+	}()
 
 	wg.Add(1)
 	go func() {
@@ -177,7 +177,7 @@ func runIcmpCheck(t *agent_models.AgentConfig) {
 		if t.PingInterval < 1 {
 			t.PingInterval = 1
 		}
-		t2, err := TestIcmpTargets(t.PingTargets, t.PingInterval*60)
+		t2, err := TestIcmpTargets(t.PingTargets, t.PingInterval)
 		if err != nil {
 			log.Error(err)
 		}

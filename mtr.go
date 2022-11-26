@@ -15,7 +15,7 @@ import (
 func TestMtrTargets(t []string, triggered bool) ([]*agent_models.MtrTarget, error) {
 	var targets []*agent_models.MtrTarget
 
-	ch := make(chan *agent_models.MtrTarget)
+	ch := make(chan *agent_models.MtrTarget, len(t))
 
 	var wg sync.WaitGroup
 	for i := range t {
@@ -26,12 +26,14 @@ func TestMtrTargets(t []string, triggered bool) ([]*agent_models.MtrTarget, erro
 			if err != nil {
 				log.Error(err)
 			}
-
 			ch <- target
 		}()
 	}
-	targets = append(targets, <-ch)
 	wg.Wait()
+	close(ch)
+	for i := range ch {
+		targets = append(targets, i)
+	}
 	return targets, nil
 }
 
