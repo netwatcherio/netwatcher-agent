@@ -24,23 +24,20 @@ func CheckICMP(t string, duration int, out chan agent_models.IcmpTarget) error {
 	var cmd *exec.Cmd
 	switch OsDetect {
 	case "windows":
-		log.Println("Windows")
 		break
 	case "darwin":
-		log.Println("OSX")
 		args := []string{"-c", "./lib/ethr_osx -no -w 1 -x " + t + " -p icmp -t pi -d " +
 			strconv.FormatInt(int64(duration), 10) + "s -4"}
 		cmd = exec.CommandContext(context.TODO(), "/bin/bash", args...)
 		break
 	case "linux":
-		log.Println("Linux")
 		break
 	default:
 		log.Fatalf("Unknown OS")
 	}
 
 	cmdOut, err := cmd.CombinedOutput()
-	fmt.Printf("%s\n", out)
+	fmt.Printf("%s\n", cmdOut)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -61,22 +58,19 @@ func CheckICMP(t string, duration int, out chan agent_models.IcmpTarget) error {
 	}
 	metrics2 := compile2.FindAllString(ethrOutput[2], -1)
 
-	log.Printf("%s", metrics1)
-	log.Printf("%s", metrics2)
-
 	icmpTarget.Result.Metrics = agent_models.IcmpMetrics{
-		Avg:         metrics2[0],
-		Min:         metrics2[1],
-		Max:         metrics2[8],
-		Sent:        convHandleStrInt(metrics1[0]),
-		Received:    convHandleStrInt(metrics1[1]),
-		Loss:        convHandleStrInt(metrics1[2]),
-		Percent50:   metrics2[2],
-		Percent90:   metrics2[3],
-		Percent95:   metrics2[4],
-		Percent99:   metrics2[5],
-		Percent999:  metrics2[6],
-		Percent9999: metrics2[7],
+		Avg:         metrics2[1],
+		Min:         metrics2[2],
+		Max:         metrics2[9],
+		Sent:        ConvHandleStrInt(metrics1[0]),
+		Received:    ConvHandleStrInt(metrics1[1]),
+		Loss:        ConvHandleStrInt(metrics1[2]),
+		Percent50:   metrics2[3],
+		Percent90:   metrics2[4],
+		Percent95:   metrics2[5],
+		Percent99:   metrics2[6],
+		Percent999:  metrics2[7],
+		Percent9999: metrics2[8],
 	}
 	icmpTarget.Result.StopTimestamp = time.Now()
 
@@ -89,6 +83,7 @@ func CheckICMP(t string, duration int, out chan agent_models.IcmpTarget) error {
 func TestIcmpTargets(t []string, interval int) (out chan agent_models.IcmpTarget) {
 	var wg sync.WaitGroup
 
+	out = make(chan agent_models.IcmpTarget, len(t))
 	defer close(out)
 	for i := range t {
 		wg.Add(1)

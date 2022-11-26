@@ -92,7 +92,7 @@ func PostMtr(t []*agent_models.MtrTarget) (agent_models.ApiResponse, error) {
 	return resp, err
 }
 
-func PostIcmp(t []*agent_models.IcmpTarget) (agent_models.ApiResponse, error) {
+func PostIcmp(t []agent_models.IcmpTarget) (agent_models.ApiResponse, error) {
 	verifyData := agent_models.ApiPushData{
 		Pin:       os.Getenv("PIN"),
 		Hash:      os.Getenv("HASH"),

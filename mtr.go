@@ -12,44 +12,43 @@ import (
 	"time"
 )
 
-func TestMtrTargets(t []string, triggered bool) (out chan agent_models.MtrTarget) {
-	var wg sync.WaitGroup
+func TestMtrTargets(t []string, triggered bool) ([]*agent_models.MtrTarget, error) {
+	var targets []*agent_models.MtrTarget
 
-	out = make(chan agent_models.MtrTarget, len(t))
-	defer close(out)
+	ch := make(chan *agent_models.MtrTarget)
+
+	var wg sync.WaitGroup
 	for i := range t {
 		wg.Add(1)
-		go func(tt string) {
+		go func() {
 			defer wg.Done()
-			err := CheckMTR(tt, 15, triggered, out)
+			target, err := CheckMTR(t[i], 15, triggered)
 			if err != nil {
 				log.Error(err)
 			}
-		}(t[i])
+
+			ch <- target
+		}()
+		targets = append(targets, <-ch)
 	}
-
 	wg.Wait()
-
-	return
+	return targets, nil
 }
 
 // CheckMTR change to client controller check
-func CheckMTR(host string, duration int, triggered bool, out chan agent_models.MtrTarget) error {
+func CheckMTR(host string, duration int, triggered bool) (*agent_models.MtrTarget, error) {
 	startTime := time.Now()
 
 	var cmd *exec.Cmd
 	switch OsDetect {
 	case "windows":
-		log.Println("Windows")
 		break
 	case "darwin":
-		log.Println("OSX")
 		args := []string{"-c", "./lib/ethr_osx -no -w 1 -x " + host + " -p icmp -t mtr -d " +
 			strconv.FormatInt(int64(duration), 10) + "s -4"}
 		cmd = exec.CommandContext(context.TODO(), "/bin/bash", args...)
 		break
 	case "linux":
-		log.Println("Linux")
 		break
 	default:
 		log.Fatalf("Unknown OS")
@@ -59,7 +58,7 @@ func CheckMTR(host string, duration int, triggered bool, out chan agent_models.M
 	// fmt.Printf("%s\n", output)
 	if err != nil {
 		log.Error(err)
-		return err
+		return nil, err
 	}
 
 	ethrOutput := strings.Split(string(output), "- - - - - - - - - - - - - - - - - "+
@@ -72,13 +71,13 @@ func CheckMTR(host string, duration int, triggered bool, out chan agent_models.M
 		"(((([0-9]*\\.[0-9]+)|([0-9]+\\.))[a-z]+)|([-]))\\s+" +
 		"(((([0-9]*\\.[0-9]+)|([0-9]+\\.))[a-z]+)|([-]))") // worst
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	newestSample := strings.Split(ethrOutput[len(ethrOutput)-1], "Ethr done")
 	ethrLines := strings.Split(newestSample[0], "\n")
 
-	t := agent_models.MtrTarget{}
+	t := &agent_models.MtrTarget{}
 	t.Result.StartTimestamp = startTime
 
 	t.Result.Metrics = make(map[int]agent_models.MtrMetrics)
@@ -93,7 +92,7 @@ func CheckMTR(host string, duration int, triggered bool, out chan agent_models.M
 		log.Infof("%s", dataMatch)
 
 		// hop num = result[1]
-		t.Result.Metrics[convHandleStrInt(dataMatch[1])] = agent_models.MtrMetrics{
+		t.Result.Metrics[ConvHandleStrInt(dataMatch[1])] = agent_models.MtrMetrics{
 			Address:  dataMatch[2],
 			Sent:     mtrNumDashCheck(dataMatch[8]),
 			Received: mtrNumDashCheck(dataMatch[11]),
@@ -112,14 +111,12 @@ func CheckMTR(host string, duration int, triggered bool, out chan agent_models.M
 	// 	return err
 	// }
 
-	out <- t
-
-	return nil
+	return t, nil
 }
 
 func mtrNumDashCheck(str string) int {
 	if str == "-" {
 		return 0
 	}
-	return convHandleStrInt(str)
+	return ConvHandleStrInt(str)
 }
