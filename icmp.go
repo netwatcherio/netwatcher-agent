@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/netwatcherio/netwatcher-agent/agent_models"
 	log "github.com/sirupsen/logrus"
+	"os"
 	"os/exec"
 	"regexp"
 	"strconv"
@@ -86,20 +87,22 @@ func TestIcmpTargets(t []string, length int) ([]*agent_models.IcmpTarget, error)
 	var wg sync.WaitGroup
 	for i := range t {
 		wg.Add(1)
-		go func() {
+		go func(s string) {
 			defer wg.Done()
-			target, err := CheckICMP(t[i], length)
+			target, err := CheckICMP(s, length)
 			if err != nil {
 				log.Error(err)
 			}
 
 			ch2 <- target
-		}()
+		}(t[i])
 	}
 	wg.Wait()
 	close(ch2)
+
 	for i := range ch2 {
 		targets = append(targets, i)
+		log.Warnf("ICMP: %s", i.Address)
 	}
 
 	return targets, nil
@@ -132,6 +135,8 @@ func CheckICMP(t string, duration int) (*agent_models.IcmpTarget, error) {
 		log.Error(err)
 		return nil, err
 	}
+
+	fmt.Fprintf(os.Stderr, string(cmdOut))
 
 	compile1, err := regexp.Compile(".=.(.)")
 	if err != nil {

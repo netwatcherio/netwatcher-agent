@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/netwatcherio/netwatcher-agent/agent_models"
 	log "github.com/sirupsen/logrus"
 	"os/exec"
@@ -20,25 +21,24 @@ func TestMtrTargets(t []string, triggered bool) ([]*agent_models.MtrTarget, erro
 	var wg sync.WaitGroup
 	for i := range t {
 		wg.Add(1)
-		go func() {
+		go func(s string) {
 			defer wg.Done()
-			target, err := CheckMTR(t[i], 15, triggered)
+
+			target, err := CheckMTR(s, 15, triggered)
 			if err != nil {
 				log.Error(err)
 			}
 			ch <- target
-		}()
+		}(s)
 	}
 	wg.Wait()
 	close(ch)
-	for i := range ch {
-		targets = append(targets, i)
-	}
+
 	return targets, nil
 }
 
 // CheckMTR change to client controller check
-func CheckMTR(host string, duration int, triggered bool) (*agent_models.MtrTarget, error) {
+func CheckMTR(host string, duration int, triggered bool) (agent_models.MtrTarget, error) {
 	startTime := time.Now()
 
 	var cmd *exec.Cmd
@@ -60,7 +60,7 @@ func CheckMTR(host string, duration int, triggered bool) (*agent_models.MtrTarge
 	// fmt.Printf("%s\n", output)
 	if err != nil {
 		log.Error(err)
-		return nil, err
+		return agent_models.MtrTarget{}, err
 	}
 
 	ethrOutput := strings.Split(string(output), "- - - - - - - - - - - - - - - - - "+
@@ -73,13 +73,13 @@ func CheckMTR(host string, duration int, triggered bool) (*agent_models.MtrTarge
 		"(((([0-9]*\\.[0-9]+)|([0-9]+\\.))[a-z]+)|([-]))\\s+" +
 		"(((([0-9]*\\.[0-9]+)|([0-9]+\\.))[a-z]+)|([-]))") // worst
 	if err != nil {
-		return nil, err
+		return agent_models.MtrTarget{}, err
 	}
 
 	newestSample := strings.Split(ethrOutput[len(ethrOutput)-1], "Ethr done")
 	ethrLines := strings.Split(newestSample[0], "\n")
 
-	t := &agent_models.MtrTarget{}
+	t := agent_models.MtrTarget{}
 	t.Result.StartTimestamp = startTime
 
 	t.Result.Metrics = make(map[int]agent_models.MtrMetrics)

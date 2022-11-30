@@ -77,7 +77,7 @@ func PostSpeedTest(t *agent_models.SpeedTestInfo) (agent_models.ApiResponse, err
 	return resp, err
 }
 
-func PostMtr(t []*agent_models.MtrTarget) (agent_models.ApiResponse, error) {
+func PostMtr(t []agent_models.MtrTarget) (agent_models.ApiResponse, error) {
 	verifyData := agent_models.ApiPushData{
 		Pin:       os.Getenv("PIN"),
 		Hash:      os.Getenv("HASH"),
