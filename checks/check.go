@@ -15,6 +15,7 @@ Mtr: target
 type CheckData struct {
 	Type      string      `json:"type"`
 	Target    string      `json:"address,omitempty"`
+	ID        string      `json:"id"`
 	Duration  int         `json:"interval,omitempty'"`
 	Count     int         `json:"count,omitempty"`
 	Triggered bool        `json:"triggered"`

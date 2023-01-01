@@ -49,7 +49,7 @@ type IperfResults struct {
 			Tos        int    `json:"tos"`
 		} `json:"test_start"`
 	} `json:"start"`
-	Intervals []struct {
+	/*Intervals []struct {
 		Streams []struct {
 			Socket        int     `json:"socket"`
 			Start         float64 `json:"start"`
@@ -71,7 +71,7 @@ type IperfResults struct {
 			Omitted       bool    `json:"omitted"`
 			Sender        bool    `json:"sender"`
 		} `json:"sum"`
-	} `json:"intervals"`
+	} `json:"intervals"`*/
 	End struct {
 		Streams []struct {
 			Udp struct {
@@ -152,7 +152,7 @@ func (r *IperfResults) Check(cd *CheckData) error {
 		break
 	case "darwin":
 		targetHost := strings.Split(cd.Target, ":")
-		args := []string{"-c", "./lib/iperf3_osx -c " + targetHost[0] + " -p " + targetHost[1] + " -u -t " + strconv.Itoa(cd.Duration) + " -b 8K --json"}
+		args := []string{"-c", "./lib/iperf3_darwin -c " + targetHost[0] + " -p " + targetHost[1] + " -u -t " + strconv.Itoa(cd.Duration) + " -b 8K --json"}
 		cmd = exec.CommandContext(context.TODO(), "/bin/bash", args...)
 		break
 	case "linux":

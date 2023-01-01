@@ -55,9 +55,18 @@ func main() {
 		Duration: 10,
 	})*/
 	data.Checks = append(data.Checks, checks.CheckData{
-		Type:   "IPERF",
-		Target: "0.0.0.0:5201",
-		Server: true,
+		Type:     "RPERF",
+		Target:   "0.0.0.0:5199",
+		Duration: 10,
+		//Server: true,
+		ID: "2",
+	})
+	data.Checks = append(data.Checks, checks.CheckData{
+		Type:     "RPERF",
+		Target:   "0.0.0.0:5199",
+		Duration: 10,
+		ID:       "1",
+		//Server: true,
 	})
 	/*data.Checks = append(data.Checks, checks.CheckData{
 		Type:     "MTR",
@@ -110,6 +119,35 @@ func main() {
 						fmt.Println("something went wrong processing iperf... sleeping for 10 seconds")
 						time.Sleep(time.Second * 10)
 					}
+
+					fmt.Println("Sending data to the channel (IPERF) for ", checkData.Target, "...")
+					dd <- checkData
+				}
+			}(d)
+			break
+		case "RPERF":
+			// if check says its a server, start a iperf server based on the bind and port provided in target
+			if d.Server {
+				func(checkData checks.CheckData) {
+					iperf := checks.IperfResults{}
+					err := iperf.Check(&checkData)
+					if err != nil {
+						fmt.Println(err)
+					}
+				}(d)
+			}
+			go func(checkData checks.CheckData) {
+				for {
+					fmt.Println("Running rperf test for ", checkData.Target, "...")
+					rperf := checks.RPerfResults{}
+					err := rperf.Check(&checkData)
+					if err != nil {
+						fmt.Println(err)
+						fmt.Println("something went wrong processing rperf... sleeping for 10 seconds")
+						time.Sleep(time.Second * 10)
+					}
+					/*fmt.Println("something went wrong processing rperf... sleeping for 10 seconds")
+					time.Sleep(time.Second * 10)*/
 
 					fmt.Println("Sending data to the channel (IPERF) for ", checkData.Target, "...")
 					dd <- checkData
