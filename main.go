@@ -1,52 +1,20 @@
 package main
 
 import (
-	log "github.com/sirupsen/logrus"
+	"encoding/json"
+	"fmt"
+	"github.com/netwatcherio/netwatcher-agent/api"
+	"github.com/netwatcherio/netwatcher-agent/checks"
+	"log"
 	"os"
 	"os/signal"
 	"runtime"
-	"sync"
+	"strings"
 	"time"
 )
 
-var (
-	timeout        = 800 * time.Millisecond
-	interval       = 100 * time.Millisecond
-	hopSleep       = time.Nanosecond
-	maxHops        = 64
-	maxUnknownHops = 10
-	ringBufferSize = 50
-	ptrLookup      = false
-	srcAddr        = ""
-	ttl            = 60
-)
-
-var (
-	ApiUrl   string
-	OsDetect string
-)
-
-// todo implement nmap and iperf to main agents
-
 func main() {
-
-	log.SetFormatter(&log.TextFormatter{})
-
-	err := setup()
-	if err != nil {
-		log.WithError(err).Fatal("An unexpected error occurred while configuring the agent")
-		return
-	}
-
-	/*signals := make(chan os.Signal, 1)
-	signal.Notify(signals, syscall.SIGTERM)
-	signal.Notify(signals, syscall.SIGKILL)
-	go func() {
-		s := <-signals
-		log.Fatal("Received Signal: %s", s)
-		shutdown()
-		os.Exit(1)
-	}()*/
+	fmt.Printf("Starting NetWatcher Agent...\n")
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
@@ -58,19 +26,148 @@ func main() {
 		}
 	}()
 
-	OsDetect = runtime.GOOS
-	ApiUrl = os.Getenv("API_URL")
-	if ApiUrl == "" {
-		log.Fatal("You must insert the API URL")
+	setup()
+	clientCfg := api.NewClientConfig()
+	client := api.NewClient(clientCfg)
+
+	// initialize the data from api
+	// todo make this a loop that checks periodically as well as handles the errors and retries
+	data := client.Data()
+	err := data.Initialize()
+	if err != nil {
+		log.Fatal(err)
+		return
 	}
 
-	var wg sync.WaitGroup
-	log.Infof("Starting NetWatcher Agent...")
-	log.Infof("Starting microsoft/ethr logging...")
-	wg.Wait()
+	/*data.Checks = append(data.Checks, checks.CheckData{
+		Type:     "ICMP",
+		Target:   "1.1.1.1",
+		Duration: 10,
+	})
+	*/
+	data.Checks = append(data.Checks, checks.CheckData{
+		Type: "NETINFO",
+	})
 
-	StartScheduler()
+	/*data.Checks = append(data.Checks, checks.CheckData{
+		Type:     "IPERF",
+		Target:   "10.0.100.108:5201",
+		Duration: 10,
+	})*/
+	data.Checks = append(data.Checks, checks.CheckData{
+		Type:   "IPERF",
+		Target: "0.0.0.0:5201",
+		Server: true,
+	})
+	/*data.Checks = append(data.Checks, checks.CheckData{
+		Type:     "MTR",
+		Target:   "vultr1.gw.dec0de.xyz",
+		Duration: 10,
+	})*/
 
+	//
+
+	dd := make(chan checks.CheckData)
+	for _, d := range data.Checks {
+		time.Sleep(time.Millisecond)
+		switch strings.ToUpper(d.Type) {
+		case "MTR":
+			go func(checkData checks.CheckData) {
+				for {
+					fmt.Println("Running mtr test for ", checkData.Target, "...")
+					mtr := checks.MtrResult{}
+					err := mtr.Check(&checkData)
+					if err != nil {
+						fmt.Println(err)
+					}
+					fmt.Println("Sending data to the channel (MTR) for ", checkData.Target, "...")
+					dd <- checkData
+				}
+			}(d)
+			// todo push
+			break
+		case "IPERF":
+			// if check says its a server, start a iperf server based on the bind and port provided in target
+			if d.Server {
+				func(checkData checks.CheckData) {
+					iperf := checks.IperfResults{}
+					err := iperf.Check(&checkData)
+					if err != nil {
+						fmt.Println(err)
+					}
+				}(d)
+			}
+			go func(checkData checks.CheckData) {
+				for {
+					fmt.Println("Running iperf test for ", checkData.Target, "...")
+					iperf := checks.IperfResults{}
+					err := iperf.Check(&checkData)
+					if err != nil {
+						fmt.Println(err)
+					}
+
+					if iperf.Error != "" {
+						fmt.Println("something went wrong processing iperf... sleeping for 10 seconds")
+						time.Sleep(time.Second * 10)
+					}
+
+					fmt.Println("Sending data to the channel (IPERF) for ", checkData.Target, "...")
+					dd <- checkData
+				}
+			}(d)
+			break
+		case "SPEEDTEST":
+			go func(checkData checks.CheckData) {
+				for {
+					fmt.Println("Running speed test...")
+					speedtest := checks.SpeedTest{}
+					err := speedtest.Check()
+					if err != nil {
+						fmt.Println(err)
+						return
+					}
+					dd <- checkData
+
+					//todo make this onyl run once, because when it uploads to the server, it will disable it,
+					//todo preventing it from being in the configuration after
+					time.Sleep(time.Minute * 5)
+				}
+			}(d)
+			break
+		case "NETINFO":
+			go func(checkData checks.CheckData) {
+				for {
+					fmt.Println("Checking networking information...")
+					net := checks.NetResult{}
+					err := net.Check(&checkData)
+					if err != nil {
+						fmt.Println(err)
+					}
+					dd <- checkData
+
+					// todo make configurable??
+					time.Sleep(time.Minute * 5)
+				}
+			}(d)
+			break
+
+		// todo other checks like port scans etc.
+
+		default:
+			fmt.Println("Unknown type of check...")
+			break
+		}
+	}
+
+	for {
+		chand := <-dd
+		//todo process data received from channel and add to queue
+		marshal, err := json.Marshal(chand)
+		if err != nil {
+			return
+		}
+		print("\n\n\n--------------------------\n" + string(marshal) + "\n--------------------------\n\n\n")
+	}
 }
 
 func shutdown() {
