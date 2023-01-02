@@ -33,48 +33,26 @@ func main() {
 	// initialize the data from api
 	// todo make this a loop that checks periodically as well as handles the errors and retries
 	data := client.Data()
+	data.PIN = clientCfg.APIPassword
+	data.ID = clientCfg.APIHost
 	err := data.Initialize()
 	if err != nil {
 		log.Fatal(err)
 		return
 	}
 
-	/*data.Checks = append(data.Checks, checks.CheckData{
-		Type:     "ICMP",
-		Target:   "1.1.1.1",
-		Duration: 10,
-	})
-	*/
 	data.Checks = append(data.Checks, checks.CheckData{
 		Type: "NETINFO",
 	})
 
-	/*data.Checks = append(data.Checks, checks.CheckData{
-		Type:     "IPERF",
-		Target:   "10.0.100.108:5201",
-		Duration: 10,
-	})*/
-	data.Checks = append(data.Checks, checks.CheckData{
-		Type:     "RPERF",
-		Target:   "0.0.0.0:5199",
-		Duration: 10,
-		//Server: true,
-		ID: "2",
-	})
-	data.Checks = append(data.Checks, checks.CheckData{
-		Type:     "RPERF",
-		Target:   "0.0.0.0:5199",
-		Duration: 10,
-		ID:       "1",
-		//Server: true,
-	})
-	/*data.Checks = append(data.Checks, checks.CheckData{
-		Type:     "MTR",
-		Target:   "vultr1.gw.dec0de.xyz",
-		Duration: 10,
-	})*/
-
-	//
+	for {
+		if len(data.Checks) <= 0 {
+			fmt.Println("no checks received, waiting for 2 minutes")
+			time.Sleep(time.Minute * 2)
+		} else {
+			break
+		}
+	}
 
 	dd := make(chan checks.CheckData)
 	for _, d := range data.Checks {
@@ -95,49 +73,23 @@ func main() {
 			}(d)
 			// todo push
 			break
-		case "IPERF":
-			// if check says its a server, start a iperf server based on the bind and port provided in target
-			if d.Server {
-				func(checkData checks.CheckData) {
-					iperf := checks.IperfResults{}
-					err := iperf.Check(&checkData)
-					if err != nil {
-						fmt.Println(err)
-					}
-				}(d)
-			}
-			go func(checkData checks.CheckData) {
-				for {
-					fmt.Println("Running iperf test for ", checkData.Target, "...")
-					iperf := checks.IperfResults{}
-					err := iperf.Check(&checkData)
-					if err != nil {
-						fmt.Println(err)
-					}
-
-					if iperf.Error != "" {
-						fmt.Println("something went wrong processing iperf... sleeping for 10 seconds")
-						time.Sleep(time.Second * 10)
-					}
-
-					fmt.Println("Sending data to the channel (IPERF) for ", checkData.Target, "...")
-					dd <- checkData
-				}
-			}(d)
-			break
 		case "RPERF":
 			// if check says its a server, start a iperf server based on the bind and port provided in target
 			if d.Server {
-				func(checkData checks.CheckData) {
-					iperf := checks.IperfResults{}
-					err := iperf.Check(&checkData)
+				/*func(checkData checks.CheckData) {
+					rperf := checks.RPerfResults{}
+					err := rperf.Check(&checkData)
 					if err != nil {
 						fmt.Println(err)
 					}
-				}(d)
+				}(d)*/
 			}
 			go func(checkData checks.CheckData) {
 				for {
+					//todo
+					//make this continue to run, however, make it check if the latest version of the check
+					//data contains it, if not, then break out of this thread
+
 					fmt.Println("Running rperf test for ", checkData.Target, "...")
 					rperf := checks.RPerfResults{}
 					err := rperf.Check(&checkData)
@@ -149,7 +101,7 @@ func main() {
 					/*fmt.Println("something went wrong processing rperf... sleeping for 10 seconds")
 					time.Sleep(time.Second * 10)*/
 
-					fmt.Println("Sending data to the channel (IPERF) for ", checkData.Target, "...")
+					fmt.Println("Sending data to the channel (RPERF) for ", checkData.Target, "...")
 					dd <- checkData
 				}
 			}(d)

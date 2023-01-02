@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -78,15 +77,17 @@ func (c Client) Request(method, endpoint string, data, response interface{}) err
 	// Construct endpoint URL
 	u, err := url.Parse(c.config.APIHost)
 	if err != nil {
-		return fmt.Errorf("hubspot.Client.Request(): url.Parse(): %v", err)
+		return fmt.Errorf("url.Parse(): %v", err)
 	}
 	u.Path = path.Join(u.Path, endpoint)
 
 	// User authentication
 	uri := u.String()
-	if c.config.APIUsername == "" || c.config.APIPassword == "" {
+
+	//todo auth
+	/*if c.config.APIUsername == "" || c.config.APIPassword == "" {
 		return errors.New("missing user authentication data")
-	}
+	}*/
 
 	// Init request object
 	var req *http.Request
@@ -112,7 +113,8 @@ func (c Client) Request(method, endpoint string, data, response interface{}) err
 
 	// Headers
 	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", "Basic "+basicAuth(c.config.APIUsername, c.config.APIPassword))
+	// todo auth??
+	//req.Header.Add("Authorization", "Basic "+basicAuth(c.config.APIUsername, c.config.APIPassword))
 
 	// Execute and read response body
 	netClient := &http.Client{

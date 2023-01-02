@@ -40,7 +40,7 @@ func setup() error {
 	if os.Getenv("ENVIRONMENT") == "PRODUCTION" {
 		fmt.Printf("Running in PRODUCTION mode.\n")
 	} else {
-		fmt.Printf("Running in %sDEVELOPMENT%s mode.", "\u001B[1;33m", "\033[m\n")
+		fmt.Printf("Running in DEVELOPMENT mode.\n" /*"\u001B[1;33m", "\033[m\n"*/)
 	}
 	// Attempt to load the config file
 	err = godotenv.Load("config.conf")

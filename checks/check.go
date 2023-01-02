@@ -1,5 +1,7 @@
 package checks
 
+import "go.mongodb.org/mongo-driver/bson/primitive"
+
 /*
 - Data will be uploaded at set intervals, if it fails, it waits and retries in the next set interval, continuing to
 add data to the queue.
@@ -13,53 +15,14 @@ Mtr: target
 */
 
 type CheckData struct {
-	Type      string      `json:"type"`
-	Target    string      `json:"address,omitempty"`
-	ID        string      `json:"id"`
-	Duration  int         `json:"interval,omitempty'"`
-	Count     int         `json:"count,omitempty"`
-	Triggered bool        `json:"triggered"`
-	ToRemove  bool        `json:"toRemove"`
-	Result    interface{} `json:"result"`
-	Server    bool        `json:"server"`
+	Type      string             `json:"type"bson:"type""`
+	Target    string             `json:"address,omitempty"bson:"target,omitempty"`
+	ID        primitive.ObjectID `json:"id"bson:"_id"`
+	AgentID   primitive.ObjectID `json:"agent_id"bson:"agent_id"`
+	Duration  int                `json:"interval,omitempty'"bson:"duration"`
+	Count     int                `json:"count,omitempty"`
+	Triggered bool               `json:"triggered"bson:"triggered,omitempty"`
+	ToRemove  bool               `json:"to_remove"bson:"to_remove,omitempty"`
+	Result    interface{}        `json:"result"bson:"result,omitempty"`
+	Server    bool               `json:"server,omitempty"bson:"server,omitempty"`
 }
-
-/*func init() {
-	for {
-		buffer <- NewMtrCheck()
-		buffer <- NewOtherCheck()
-		wg := sync.WaitGroup{}
-		for i := 0; i < runtime.NumCPU(); i++ {
-			wg.Add(1)
-			go func() {
-				for {
-					select {
-					case next <- buffer:
-						current.Run(CheckData{})
-						done <- current.Results()
-					default:
-						wg.Done()
-						break
-					}
-				}
-			}()
-		}
-		wg.Wait()
-		// Print all results once all done
-	}
-}*/
-
-/**
-
-Agent requests "config w/ checks" (eg. mtr:1.1.1.1 speedtest, blah)
-Agent config will contain
-
-CheckData:
-- Type of Check
-- Check Target (depending on type of check, IP, etc.) omitempty
-- Check interval & count (omitempty)
-- Result (format will vary depending on the check)
-
-- Check data result will be individual structs based on check
-
-*/
