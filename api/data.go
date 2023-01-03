@@ -29,7 +29,7 @@ func (c Client) Data() Data {
 
 func (a *Data) Initialize() error {
 	if (a.PIN != "" && a.ID == "") || (a.PIN != "" && a.ID != "") {
-		err := a.Client.Request("POST", "/api/v2/config/", a, a)
+		err := a.Client.Request("POST", "/api/v2/config/", &a, &a)
 		if err != nil {
 			return err
 		}
@@ -37,14 +37,13 @@ func (a *Data) Initialize() error {
 		if a.Error != "" {
 			return errors.New(a.Error)
 		}
+		return nil
 	}
-	return nil
+	return errors.New("failed to meet requirements for auth")
 }
 
-func (a *Data) Push(data []checks.CheckData) error {
-	a.Checks = data
-
-	err := a.Client.Request("POST", "/api/v2/agent/push", a, a)
+func (a *Data) Push() error {
+	err := a.Client.Request("POST", "/api/v2/agent/push", &a, &a)
 	if err != nil {
 		return err
 	}

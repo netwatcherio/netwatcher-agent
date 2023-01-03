@@ -18,76 +18,76 @@ type RPerfResults struct {
 	StopTimestamp  time.Time `json:"stop_timestamp"bson:"stop_timestamp"`
 	Config         struct {
 		Additional struct {
-			IpVersion   int  `json:"ip_version"`
-			OmitSeconds int  `json:"omit_seconds"`
-			Reverse     bool `json:"reverse"`
-		} `json:"additional"`
+			IpVersion   int  `json:"ip_version"bson:"ip_version"`
+			OmitSeconds int  `json:"omit_seconds"bson:"omit_seconds"`
+			Reverse     bool `json:"reverse"bson:"reverse"`
+		} `json:"additional"bson:"additional"`
 		Common struct {
-			Family  string `json:"family"`
-			Length  int    `json:"length"`
-			Streams int    `json:"streams"`
-		} `json:"common"`
+			Family  string `json:"family"bson:"family"`
+			Length  int    `json:"length"bson:"length"`
+			Streams int    `json:"streams"bson:"streams"`
+		} `json:"common"bson:"common"`
 		Download struct {
-		} `json:"download"`
+		} `json:"download"bson:"download"`
 		Upload struct {
-			Bandwidth    int     `json:"bandwidth"`
-			Duration     float64 `json:"duration"`
-			SendInterval float64 `json:"send_interval"`
-		} `json:"upload"`
-	} `json:"config"`
+			Bandwidth    int     `json:"bandwidth"bson:"bandwidth"`
+			Duration     float64 `json:"duration"bson:"duration"`
+			SendInterval float64 `json:"send_interval"bson:"send_interval"`
+		} `json:"upload"bson:"upload"`
+	} `json:"config"bson:"config"`
 	Streams []struct {
-		Abandoned bool `json:"abandoned"`
-		Failed    bool `json:"failed"`
+		Abandoned bool `json:"abandoned"bson:"abandoned"`
+		Failed    bool `json:"failed"bson:"failed"`
 		Intervals struct {
 			Receive []struct {
-				BytesReceived     int     `json:"bytes_received"`
-				Duration          float64 `json:"duration"`
-				JitterSeconds     float64 `json:"jitter_seconds"`
-				PacketsDuplicated int     `json:"packets_duplicated"`
-				PacketsLost       int     `json:"packets_lost"`
-				PacketsOutOfOrder int     `json:"packets_out_of_order"`
-				PacketsReceived   int     `json:"packets_received"`
-				Timestamp         float64 `json:"timestamp"`
-				UnbrokenSequence  int     `json:"unbroken_sequence"`
-			} `json:"receive"`
+				BytesReceived     int     `json:"bytes_received"bson:"bytes_received"`
+				Duration          float64 `json:"duration"bson:"duration"`
+				JitterSeconds     float64 `json:"jitter_seconds"bson:"jitter_seconds"`
+				PacketsDuplicated int     `json:"packets_duplicated"bson:"packets_duplicated"`
+				PacketsLost       int     `json:"packets_lost"bson:"packets_lost"`
+				PacketsOutOfOrder int     `json:"packets_out_of_order"bson:"packets_out_of_order"`
+				PacketsReceived   int     `json:"packets_received"bson:"packets_received"`
+				Timestamp         float64 `json:"timestamp"bson:"timestamp"`
+				UnbrokenSequence  int     `json:"unbroken_sequence"bson:"unbroken_sequence"`
+			} `json:"receive"bson:"receive"`
 			Send []struct {
-				BytesSent    int     `json:"bytes_sent"`
-				Duration     float64 `json:"duration"`
-				PacketsSent  int     `json:"packets_sent"`
-				SendsBlocked int     `json:"sends_blocked"`
-				Timestamp    float64 `json:"timestamp"`
-			} `json:"send"`
+				BytesSent    int     `json:"bytes_sent"bson:"bytes_sent"`
+				Duration     float64 `json:"duration"bson:"duration"`
+				PacketsSent  int     `json:"packets_sent"bson:"packets_sent"`
+				SendsBlocked int     `json:"sends_blocked"bson:"sends_blocked"`
+				Timestamp    float64 `json:"timestamp"bson:"timestamp"`
+			} `json:"send"bson:"send"`
 			Summary struct {
-				BytesReceived            int     `json:"bytes_received"`
-				BytesSent                int     `json:"bytes_sent"`
-				DurationReceive          float64 `json:"duration_receive"`
-				DurationSend             float64 `json:"duration_send"`
-				FramedPacketSize         int     `json:"framed_packet_size"`
-				JitterAverage            float64 `json:"jitter_average"`
-				JitterPacketsConsecutive int     `json:"jitter_packets_consecutive"`
-				PacketsDuplicated        int     `json:"packets_duplicated"`
-				PacketsLost              int     `json:"packets_lost"`
-				PacketsOutOfOrder        int     `json:"packets_out_of_order"`
-				PacketsReceived          int     `json:"packets_received"`
-				PacketsSent              int     `json:"packets_sent"`
-			} `json:"summary"`
-		} `json:"intervals"`
-	} `json:"streams"`
-	Success bool `json:"success"`
+				BytesReceived            int     `json:"bytes_received"bson:"bytes_received"`
+				BytesSent                int     `json:"bytes_sent"bson:"bytes_sent"`
+				DurationReceive          float64 `json:"duration_receive"bson:"duration_receive"`
+				DurationSend             float64 `json:"duration_send"bson:"duration_send"`
+				FramedPacketSize         int     `json:"framed_packet_size"bson:"framed_packet_size"`
+				JitterAverage            float64 `json:"jitter_average"bson:"jitter_average"`
+				JitterPacketsConsecutive int     `json:"jitter_packets_consecutive"bson:"jitter_packets_consecutive"`
+				PacketsDuplicated        int     `json:"packets_duplicated"bson:"packets_duplicated"`
+				PacketsLost              int     `json:"packets_lost"bson:"packets_lost"`
+				PacketsOutOfOrder        int     `json:"packets_out_of_order"bson:"packets_out_of_order"`
+				PacketsReceived          int     `json:"packets_received"bson:"packets_received"`
+				PacketsSent              int     `json:"packets_sent"bson:"packets_sent"`
+			} `json:"summary"bson:"summary"`
+		} `json:"intervals"bson:"intervals"`
+	} `json:"streams"bson:"streams"`
+	Success bool `json:"success"bson:"success"`
 	Summary struct {
-		BytesReceived            int     `json:"bytes_received"`
-		BytesSent                int     `json:"bytes_sent"`
-		DurationReceive          float64 `json:"duration_receive"`
-		DurationSend             float64 `json:"duration_send"`
-		FramedPacketSize         int     `json:"framed_packet_size"`
-		JitterAverage            float64 `json:"jitter_average"`
-		JitterPacketsConsecutive int     `json:"jitter_packets_consecutive"`
-		PacketsDuplicated        int     `json:"packets_duplicated"`
-		PacketsLost              int     `json:"packets_lost"`
-		PacketsOutOfOrder        int     `json:"packets_out_of_order"`
-		PacketsReceived          int     `json:"packets_received"`
-		PacketsSent              int     `json:"packets_sent"`
-	} `json:"summary"`
+		BytesReceived            int     `json:"bytes_received"bson:"bytes_received"`
+		BytesSent                int     `json:"bytes_sent"bson:"bytes_sent"`
+		DurationReceive          float64 `json:"duration_receive"bson:"duration_receive"`
+		DurationSend             float64 `json:"duration_send"bson:"duration_send"`
+		FramedPacketSize         int     `json:"framed_packet_size"bson:"framed_packet_size"`
+		JitterAverage            float64 `json:"jitter_average"bson:"jitter_average"`
+		JitterPacketsConsecutive int     `json:"jitter_packets_consecutive"bson:"jitter_packets_consecutive"`
+		PacketsDuplicated        int     `json:"packets_duplicated"bson:"packets_duplicated"`
+		PacketsLost              int     `json:"packets_lost"bson:"packets_lost"`
+		PacketsOutOfOrder        int     `json:"packets_out_of_order"bson:"packets_out_of_order"`
+		PacketsReceived          int     `json:"packets_received"bson:"packets_received"`
+		PacketsSent              int     `json:"packets_sent"bson:"packets_sent"`
+	} `json:"summary"bson:"summary"`
 }
 
 //./rperf -c 0.0.0.0 -p 5199 -b 8K -t 10 --udp -f json

@@ -10,7 +10,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"path"
 	"time"
 )
@@ -30,7 +29,7 @@ type ClientConfig struct {
 // NewClientConfig constructs a ClientConfig object with the environment variables set as default
 func NewClientConfig() ClientConfig {
 	apiHost := "http://localhost:3000"
-	var apiUsername string
+	/*var apiUsername string
 	var apiPassword string
 
 	if os.Getenv("HOST") != "" {
@@ -41,14 +40,12 @@ func NewClientConfig() ClientConfig {
 	}
 	if os.Getenv("ID") != "" {
 		apiPassword = os.Getenv("ID")
-	} else {
-		apiPassword = "none"
-	}
+	}*/
 
 	return ClientConfig{
-		APIHost:     apiHost,
-		APIUsername: apiUsername,
-		APIPassword: apiPassword,
+		APIHost: apiHost,
+		/*APIUsername: apiUsername,
+		APIPassword: apiPassword,*/
 		HTTPTimeout: 10 * time.Second,
 		DialTimeout: 5 * time.Second,
 		TLSTimeout:  5 * time.Second,

@@ -29,7 +29,7 @@ func setup() error {
 			return err
 		}
 		// Attempt to write the default config pattern to the config file
-		err = os.WriteFile("./config.conf", []byte(defaultConfig), 0644)
+		err = os.WriteFile(configFile, []byte(defaultConfig), 0644)
 		if err != nil {
 			return err
 		}
@@ -43,7 +43,7 @@ func setup() error {
 		fmt.Printf("Running in DEVELOPMENT mode.\n" /*"\u001B[1;33m", "\033[m\n"*/)
 	}
 	// Attempt to load the config file
-	err = godotenv.Load("config.conf")
+	err = godotenv.Load(configFile)
 	if err != nil {
 		return err
 	}

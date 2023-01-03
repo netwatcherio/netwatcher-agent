@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/netwatcherio/netwatcher-agent/api"
 	"github.com/netwatcherio/netwatcher-agent/checks"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"log"
 	"os"
 	"os/signal"
@@ -32,23 +33,24 @@ func main() {
 
 	// initialize the data from api
 	// todo make this a loop that checks periodically as well as handles the errors and retries
-	data := client.Data()
-	data.PIN = clientCfg.APIPassword
-	data.ID = clientCfg.APIHost
-	err := data.Initialize()
-	if err != nil {
-		log.Fatal(err)
-		return
+	data := api.Data{
+		Client: client,
+		PIN:    os.Getenv("PIN"),
+		ID:     os.Getenv("ID"),
 	}
 
-	data.Checks = append(data.Checks, checks.CheckData{
-		Type: "NETINFO",
-	})
-
 	for {
+		err := data.Initialize()
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		data.Checks = append(data.Checks, checks.CheckData{Type: "MTR", Target: "1.1.1.1", Duration: 5})
+		data.Checks = append(data.Checks, checks.CheckData{Type: "SPEEDTEST"})
+
 		if len(data.Checks) <= 0 {
-			fmt.Println("no checks received, waiting for 2 minutes")
-			time.Sleep(time.Minute * 2)
+			fmt.Println("no checks received, waiting for 10 seconds")
+			time.Sleep(time.Second * 10)
 		} else {
 			break
 		}
@@ -56,6 +58,12 @@ func main() {
 
 	dd := make(chan checks.CheckData)
 	for _, d := range data.Checks {
+		agId, err := primitive.ObjectIDFromHex(data.ID)
+		if err != nil {
+			log.Fatal(err)
+		}
+		d.AgentID = agId
+
 		time.Sleep(time.Millisecond)
 		switch strings.ToUpper(d.Type) {
 		case "MTR":
@@ -111,7 +119,7 @@ func main() {
 				for {
 					fmt.Println("Running speed test...")
 					speedtest := checks.SpeedTest{}
-					err := speedtest.Check()
+					err := speedtest.Check(&checkData)
 					if err != nil {
 						fmt.Println(err)
 						return
@@ -149,14 +157,28 @@ func main() {
 		}
 	}
 
+	// init queue
+	queue := data
+	queue.Checks = nil
+	queue.Error = ""
+
 	for {
-		chand := <-dd
-		//todo process data received from channel and add to queue
-		marshal, err := json.Marshal(chand)
+		cD := <-dd
+		queue.Checks = append(queue.Checks, cD)
+		// make new object??
+		marshal, err := json.Marshal(queue)
 		if err != nil {
 			return
 		}
 		print("\n\n\n--------------------------\n" + string(marshal) + "\n--------------------------\n\n\n")
+
+		err = queue.Push()
+		if err != nil {
+			// handle error on push and save queue for next time??
+			log.Println("unable to push data, keeping queue and waiting...")
+			continue
+		}
+		queue.Checks = nil
 	}
 }
 

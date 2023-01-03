@@ -13,25 +13,25 @@ import (
 type MtrData struct {
 	Report struct {
 		Mtr struct {
-			Src        string `json:"src"`
-			Dst        string `json:"dst"`
-			Tos        int    `json:"tos"`
-			Tests      int    `json:"tests"`
-			Psize      string `json:"psize"`
-			Bitpattern string `json:"bitpattern"`
+			Src        string `json:"src"bson:"src"`
+			Dst        string `json:"dst"bson:"dst"`
+			Tos        int    `json:"tos"bson:"tos"`
+			Tests      int    `json:"tests"bson:"tests"`
+			Psize      string `json:"psize"bson:"psize"`
+			Bitpattern string `json:"bitpattern"bson:"bitpattern"`
 		} `json:"mtr"`
 		Hubs []struct {
-			Count int     `json:"count"`
-			Host  string  `json:"host"`
-			Loss  float64 `json:"Loss%"`
-			Snt   int     `json:"Snt"`
-			Last  float64 `json:"Last"`
-			Avg   float64 `json:"Avg"`
-			Best  float64 `json:"Best"`
-			Wrst  float64 `json:"Wrst"`
-			StDev float64 `json:"StDev"`
-		} `json:"hubs"`
-	} `json:"report"`
+			Count int     `json:"count"bson:"count"`
+			Host  string  `json:"host"bson:"host"`
+			Loss  float64 `json:"Loss%"bson:"lossp"`
+			Snt   int     `json:"Snt"bson:"snt"`
+			Last  float64 `json:"Last"bson:"last"`
+			Avg   float64 `json:"Avg"bson:"avg"`
+			Best  float64 `json:"Best"bson:"best"`
+			Wrst  float64 `json:"Wrst"bson:"wrst"`
+			StDev float64 `json:"StDev"bson:"st_dev"`
+		} `json:"hubs"bson:"hubs"`
+	} `json:"report"bson:"report"`
 }
 
 type MtrResult struct {
