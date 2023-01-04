@@ -10,8 +10,10 @@ import (
 	"time"
 )
 
-type MtrData struct {
-	Report struct {
+type MtrResult struct {
+	StartTimestamp time.Time `json:"start_timestamp"bson:"start_timestamp"`
+	StopTimestamp  time.Time `json:"stop_timestamp"bson:"stop_timestamp"`
+	Report         struct {
 		Mtr struct {
 			Src        string `json:"src"bson:"src"`
 			Dst        string `json:"dst"bson:"dst"`
@@ -32,12 +34,6 @@ type MtrData struct {
 			StDev float64 `json:"StDev"bson:"st_dev"`
 		} `json:"hubs"bson:"hubs"`
 	} `json:"report"bson:"report"`
-}
-
-type MtrResult struct {
-	Metrics        MtrData   `json:"metrics"bson:"metrics"`
-	StartTimestamp time.Time `json:"start_timestamp"bson:"start_timestamp"`
-	StopTimestamp  time.Time `json:"stop_timestamp"bson:"stop_timestamp"`
 }
 
 /*type MtrMetrics struct {
@@ -78,14 +74,10 @@ func (r *MtrResult) Check(cd *CheckData) error {
 		return err
 	}
 
-	mtr := MtrData{}
-
-	err = json.Unmarshal(output, &mtr)
+	err = json.Unmarshal(output, r.Report)
 	if err != nil {
 		return err
 	}
-
-	r.Metrics = mtr
 
 	r.StopTimestamp = time.Now()
 	cd.Result = r

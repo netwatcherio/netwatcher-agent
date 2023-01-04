@@ -45,9 +45,9 @@ func main() {
 			fmt.Println(err)
 		}
 
-		data.Checks = append(data.Checks, checks.CheckData{Type: "MTR", Target: "vultr1.gw.dec0de.xyz", Duration: 5})
+		/*data.Checks = append(data.Checks, checks.CheckData{Type: "MTR", Target: "vultr1.gw.dec0de.xyz", Duration: 5})
 		data.Checks = append(data.Checks, checks.CheckData{Type: "MTR", Target: "ovh1.gw.dec0de.xyz", Duration: 5})
-		data.Checks = append(data.Checks, checks.CheckData{Type: "SPEEDTEST"})
+		data.Checks = append(data.Checks, checks.CheckData{Type: "SPEEDTEST"})*/
 
 		if len(data.Checks) <= 0 {
 			fmt.Println("no checks received, waiting for 10 seconds")
