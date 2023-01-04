@@ -74,7 +74,7 @@ func (r *MtrResult) Check(cd *CheckData) error {
 		return err
 	}
 
-	err = json.Unmarshal(output, r.Report)
+	err = json.Unmarshal(output, &r.Report)
 	if err != nil {
 		return err
 	}
