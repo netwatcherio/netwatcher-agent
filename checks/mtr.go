@@ -21,7 +21,7 @@ type MtrResult struct {
 			Tests      int    `json:"tests"bson:"tests"`
 			Psize      string `json:"psize"bson:"psize"`
 			Bitpattern string `json:"bitpattern"bson:"bitpattern"`
-		} `json:"mtr"`
+		} `json:"mtr"bson:"mtr"`
 		Hubs []struct {
 			Count int     `json:"count"bson:"count"`
 			Host  string  `json:"host"bson:"host"`
@@ -49,7 +49,8 @@ type MtrResult struct {
 
 func (r *MtrResult) Check(cd *CheckData) error {
 	osDetect := runtime.GOOS
-	r.StartTimestamp = time.Now()
+	var mtrResult MtrResult
+	mtrResult.StartTimestamp = time.Now()
 
 	var cmd *exec.Cmd
 	switch osDetect {
@@ -74,13 +75,13 @@ func (r *MtrResult) Check(cd *CheckData) error {
 		return err
 	}
 
-	err = json.Unmarshal(output, &r.Report)
+	err = json.Unmarshal(output, &mtrResult)
 	if err != nil {
 		return err
 	}
-
-	r.StopTimestamp = time.Now()
-	cd.Result = r
+	/*r.StopTimestamp = time.Now()*/
+	mtrResult.StopTimestamp = time.Now()
+	cd.Result = mtrResult
 
 	return nil
 }
