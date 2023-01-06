@@ -55,7 +55,7 @@ func (r *MtrResult) Check(cd *CheckData, triggered bool) error {
 		break
 	case "darwin":
 		// mtr needs to be installed manually currently
-		args := []string{"-c", "./lib/mtr_darwin " + cd.Target + "-z --show-ips --json -o LDRSBAWVGJMXI"}
+		args := []string{"-c", "./lib/mtr_darwin " + cd.Target + " -z --show-ips -o LDRSBAWVGJMXI --json"}
 		cmd = exec.CommandContext(context.TODO(), "/bin/bash", args...)
 		break
 	case "linux":
