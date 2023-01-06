@@ -26,27 +26,23 @@ type MtrResult struct {
 		Hubs []struct {
 			Count int     `json:"count"bson:"count"`
 			Host  string  `json:"host"bson:"host"`
+			ASN   string  `json:"ASN"bson:"ASN"`
 			Loss  float64 `json:"Loss%"bson:"Loss%"`
+			Drop  int     `json:"Drop"bson:"Drop"`
+			Rcv   int     `json:"Rcv"bson:"Rcv"`
 			Snt   int     `json:"Snt"bson:"Snt"`
-			Last  float64 `json:"Last"bson:"Last"`
-			Avg   float64 `json:"Avg"bson:"Avg"`
 			Best  float64 `json:"Best"bson:"Best"`
+			Avg   float64 `json:"Avg"bson:"Avg"`
 			Wrst  float64 `json:"Wrst"bson:"Wrst"`
 			StDev float64 `json:"StDev"bson:"StDev"`
+			Gmean float64 `json:"Gmean"bson:"Gmean"`
+			Jttr  float64 `json:"Jttr"bson:"Jttr"`
+			Javg  float64 `json:"Javg"bson:"Javg"`
+			Jmax  float64 `json:"Jmax"bson:"Jmax"`
+			Jint  float64 `json:"Jint"bson:"Jint"`
 		} `json:"hubs"bson:"hubs"`
 	} `json:"report"bson:"report"`
 }
-
-/*type MtrMetrics struct {
-	Address  string `json:"address"bson:"address"`
-	FQDN     string `bson:"fqdn"json:"fqdn"`
-	Sent     int    `json:"sent"bson:"sent"`
-	Received int    `json:"received"bson:"received"`
-	Last     string `bson:"last"json:"last"`
-	Avg      string `bson:"avg"json:"avg"`
-	Best     string `bson:"best"json:"best"`
-	Worst    string `bson:"worst"json:"worst"`
-}*/
 
 func (r *MtrResult) Check(cd *CheckData, triggered bool) error {
 	osDetect := runtime.GOOS
@@ -59,7 +55,7 @@ func (r *MtrResult) Check(cd *CheckData, triggered bool) error {
 		break
 	case "darwin":
 		// mtr needs to be installed manually currently
-		args := []string{"-c", "./lib/mtr_darwin " + cd.Target + " --json"}
+		args := []string{"-c", "./lib/mtr_darwin " + cd.Target + "-z --show-ips --json -o LDRSBAWVGJMXI"}
 		cmd = exec.CommandContext(context.TODO(), "/bin/bash", args...)
 		break
 	case "linux":
