@@ -26,13 +26,13 @@ type MtrResult struct {
 		Hubs []struct {
 			Count int     `json:"count"bson:"count"`
 			Host  string  `json:"host"bson:"host"`
-			Loss  float64 `json:"Loss%"bson:"lossp"`
-			Snt   int     `json:"Snt"bson:"snt"`
-			Last  float64 `json:"Last"bson:"last"`
-			Avg   float64 `json:"Avg"bson:"avg"`
-			Best  float64 `json:"Best"bson:"best"`
-			Wrst  float64 `json:"Wrst"bson:"wrst"`
-			StDev float64 `json:"StDev"bson:"st_dev"`
+			Loss  float64 `json:"Loss%"bson:"Loss%"`
+			Snt   int     `json:"Snt"bson:"Snt"`
+			Last  float64 `json:"Last"bson:"Last"`
+			Avg   float64 `json:"Avg"bson:"Avg"`
+			Best  float64 `json:"Best"bson:"Best"`
+			Wrst  float64 `json:"Wrst"bson:"Wrst"`
+			StDev float64 `json:"StDev"bson:"StDev"`
 		} `json:"hubs"bson:"hubs"`
 	} `json:"report"bson:"report"`
 }
