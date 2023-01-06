@@ -72,7 +72,7 @@ func main() {
 				for {
 					fmt.Println("Running mtr test for ", checkData.Target, "...")
 					mtr := checks.MtrResult{}
-					err := mtr.Check(&checkData)
+					err := mtr.Check(&checkData, false)
 					if err != nil {
 						fmt.Println(err)
 					}
@@ -117,20 +117,20 @@ func main() {
 			break
 		case "SPEEDTEST":
 			go func(checkData checks.CheckData) {
-				for {
-					fmt.Println("Running speed test...")
-					speedtest := checks.SpeedTest{}
-					err := speedtest.Check(&checkData)
-					if err != nil {
-						fmt.Println(err)
-						return
-					}
-					dd <- checkData
-
-					//todo make this onyl run once, because when it uploads to the server, it will disable it,
-					//todo preventing it from being in the configuration after
-					time.Sleep(time.Minute * 5)
+				//for {
+				fmt.Println("Running speed test...")
+				speedtest := checks.SpeedTest{}
+				err := speedtest.Check(&checkData)
+				if err != nil {
+					fmt.Println(err)
+					return
 				}
+				dd <- checkData
+
+				//todo make this onyl run once, because when it uploads to the server, it will disable it,
+				//todo preventing it from being in the configuration after
+				//time.Sleep(time.Minute * 5)
+				//}
 			}(d)
 			break
 		case "NETINFO":

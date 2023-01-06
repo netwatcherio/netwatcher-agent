@@ -13,6 +13,7 @@ import (
 type MtrResult struct {
 	StartTimestamp time.Time `json:"start_timestamp"bson:"start_timestamp"`
 	StopTimestamp  time.Time `json:"stop_timestamp"bson:"stop_timestamp"`
+	Triggered      bool      `bson:"triggered"json:"triggered"`
 	Report         struct {
 		Mtr struct {
 			Src        string `json:"src"bson:"src"`
@@ -47,7 +48,7 @@ type MtrResult struct {
 	Worst    string `bson:"worst"json:"worst"`
 }*/
 
-func (r *MtrResult) Check(cd *CheckData) error {
+func (r *MtrResult) Check(cd *CheckData, triggered bool) error {
 	osDetect := runtime.GOOS
 	var mtrResult MtrResult
 	mtrResult.StartTimestamp = time.Now()
@@ -81,7 +82,9 @@ func (r *MtrResult) Check(cd *CheckData) error {
 	}
 	/*r.StopTimestamp = time.Now()*/
 	mtrResult.StopTimestamp = time.Now()
+	mtrResult.Triggered = triggered
 	cd.Result = mtrResult
+	cd.Triggered = triggered
 
 	return nil
 }
