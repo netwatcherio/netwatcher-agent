@@ -44,6 +44,7 @@ type MtrResult struct {
 	} `json:"report"bson:"report"`
 }
 
+// Check run the check for mtr, take input from checkdata for the test, and update the mtrresult object
 func (r *MtrResult) Check(cd *CheckData, triggered bool) error {
 	osDetect := runtime.GOOS
 	var mtrResult MtrResult

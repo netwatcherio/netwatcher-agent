@@ -81,7 +81,7 @@ func main() {
 					}
 					fmt.Println("Sending data to the channel (MTR) for ", checkData.Target, "...")
 					dd <- checkData
-					fmt.Println("sleeping for " + strconv.Itoa(interval) + " minutes")
+					fmt.Println("sleeping for " + strconv.Itoa(int(interval)) + " minutes")
 					time.Sleep(time.Duration(time.Minute.Minutes() * float64(interval)))
 				}
 			}(d)
