@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -70,6 +71,8 @@ func main() {
 		case "MTR":
 			go func(checkData checks.CheckData) {
 				for {
+					interval := checkData.Interval
+
 					fmt.Println("Running mtr test for ", checkData.Target, "...")
 					mtr := checks.MtrResult{}
 					err := mtr.Check(&checkData, false)
@@ -78,6 +81,8 @@ func main() {
 					}
 					fmt.Println("Sending data to the channel (MTR) for ", checkData.Target, "...")
 					dd <- checkData
+					fmt.Println("sleeping for " + strconv.Itoa(interval) + " minutes")
+					time.Sleep(time.Duration(time.Minute.Minutes() * float64(interval)))
 				}
 			}(d)
 			// todo push
@@ -147,7 +152,7 @@ func main() {
 					dd <- checkData
 
 					// todo make configurable??
-					time.Sleep(time.Minute * 5)
+					time.Sleep(time.Minute * 10)
 				}
 			}(d)
 			break
