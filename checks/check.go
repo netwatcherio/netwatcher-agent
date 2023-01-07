@@ -14,6 +14,7 @@ Mtr: target
 
 */
 
+// CheckData used for processing current, ongoing and updated checks
 type CheckData struct {
 	Type      string             `json:"type"bson:"type""`
 	Target    string             `json:"address,omitempty"bson:"target,omitempty"`
