@@ -24,7 +24,7 @@ type CheckData struct {
 	Triggered bool               `json:"triggered"bson:"triggered,omitempty"`
 	ToRemove  bool               `json:"to_remove"bson:"to_remove,omitempty"`
 	Pending   bool               `json:"pending"`                 // only used to see if a speedtest is waiting, maybe for other checks eventually
-	Interval  int                `bson:"interval"json:"interval"` // in minutes, used for mtr checks and such
+	Interval  int                `json:"interval"bson:"interval"` // in minutes, used for mtr checks and such
 	Result    interface{}        `json:"result"bson:"result,omitempty"`
 	Server    bool               `json:"server,omitempty"bson:"server,omitempty"`
 }
