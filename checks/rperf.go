@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/netwatcherio/netwatcher-agent/api"
 	"log"
 	"os/exec"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -91,7 +93,7 @@ type RPerfResults struct {
 
 //./rperf -c 0.0.0.0 -p 5199 -b 8K -t 10 --udp -f json
 
-func (r *RPerfResults) Check(cd *CheckData) error {
+func (r *RPerfResults) Check(cd *api.AgentCheck) error {
 	osDetect := runtime.GOOS
 	r.StartTimestamp = time.Now()
 
@@ -101,7 +103,7 @@ func (r *RPerfResults) Check(cd *CheckData) error {
 		break
 	case "darwin":
 		targetHost := strings.Split(cd.Target, ":")
-		args := []string{"-c", "./lib/rperf_darwin -c " + targetHost[0] + " -p " + targetHost[1] + " -b 8K -t " + cd.Duration + " --udp -f json"}
+		args := []string{"-c", "./lib/rperf_darwin -c " + targetHost[0] + " -p " + targetHost[1] + " -b 8K -t " + strconv.Itoa(cd.Duration) + " --udp -f json"}
 		cmd = exec.CommandContext(context.TODO(), "/bin/bash", args...)
 		break
 	case "linux":
@@ -143,8 +145,6 @@ func (r *RPerfResults) Check(cd *CheckData) error {
 	if err != nil {
 		return err
 	}
-
-	cd.Result = r
 
 	return nil
 }

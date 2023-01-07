@@ -17,34 +17,32 @@ type NetResult struct {
 	Timestamp        time.Time `json:"timestamp"bson:"timestamp"`
 }
 
-func (n *NetResult) Check(data *CheckData) error {
+func CheckNet() (NetResult, error) {
+	var n NetResult
 	n.Timestamp = time.Now()
 
 	user, err := speedtest.FetchUserInfo()
 	if err != nil {
-		return errors.New("unable to fetch general public network information")
+		return n, errors.New("unable to fetch general public network information")
 	}
 
 	n.PublicAddress = user.IP
 	n.InternetProvider = user.Isp
 	n.Lat = user.Lat
 	n.Long = user.Lon
-	data.Result = n
 
 	defaultGateway, err := gateway.DiscoverGateway()
 	if err != nil {
-		return errors.New("could not discover local gateway address")
+		return n, errors.New("could not discover local gateway address")
 	}
 	n.DefaultGateway = defaultGateway.String()
-	data.Result = n
 
 	localInterface, err := gateway.DiscoverInterface()
 	if err != nil {
-		return errors.New("could not discover local interface address")
+		return n, errors.New("could not discover local interface address")
 	}
 
 	n.LocalAddress = localInterface.String()
-	data.Result = n
 
-	return nil
+	return n, nil
 }

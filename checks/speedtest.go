@@ -2,6 +2,7 @@ package checks
 
 import (
 	"errors"
+	"github.com/netwatcherio/netwatcher-agent/api"
 	"github.com/showwin/speedtest-go/speedtest"
 	"time"
 )
@@ -15,22 +16,23 @@ type SpeedTest struct {
 	Timestamp time.Time     `json:"timestamp"bson:"timestamp"`
 }
 
-func (s1 *SpeedTest) Check(cd *CheckData) error {
+func CheckSpeedTest(cd *api.AgentCheck) (SpeedTest, error) {
+	var s1 SpeedTest
 	user, err := speedtest.FetchUserInfo()
 	if err != nil {
-		return err
+		return s1, err
 	}
 	serverList, err := speedtest.FetchServers(user)
 	if err != nil {
-		return err
+		return s1, err
 	}
 	targets, err := serverList.FindServer([]int{})
 	if err != nil {
-		return err
+		return s1, err
 	}
 
 	if len(targets) <= 0 {
-		return errors.New("unable to reach Ookla")
+		return s1, errors.New("unable to reach Ookla")
 	}
 
 	mainT := targets[0]
@@ -46,7 +48,5 @@ func (s1 *SpeedTest) Check(cd *CheckData) error {
 	s1.Host = mainT.Host
 	s1.Timestamp = time.Now()
 
-	cd.Result = s1
-
-	return nil
+	return s1, nil
 }

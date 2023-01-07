@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/netwatcherio/netwatcher-agent/api"
 	"log"
 	"os/exec"
 	"runtime"
@@ -44,8 +45,8 @@ type MtrResult struct {
 	} `json:"report"bson:"report"`
 }
 
-// Check run the check for mtr, take input from checkdata for the test, and update the mtrresult object
-func (r *MtrResult) Check(cd *CheckData, triggered bool) error {
+// CheckMtr run the check for mtr, take input from checkdata for the test, and update the mtrresult object
+func CheckMtr(cd *api.AgentCheck, triggered bool) (MtrResult, error) {
 	osDetect := runtime.GOOS
 	var mtrResult MtrResult
 	mtrResult.StartTimestamp = time.Now()
@@ -70,20 +71,18 @@ func (r *MtrResult) Check(cd *CheckData, triggered bool) error {
 	output, err := cmd.Output()
 	fmt.Printf("%s\n", output)
 	if err != nil {
-		return err
+		return mtrResult, nil
 	}
 
 	err = json.Unmarshal(output, &mtrResult)
 	if err != nil {
-		return err
+		return mtrResult, nil
 	}
 	/*r.StopTimestamp = time.Now()*/
 	mtrResult.StopTimestamp = time.Now()
 	mtrResult.Triggered = triggered
-	cd.Result = mtrResult
-	cd.Triggered = triggered
 
-	return nil
+	return mtrResult, nil
 }
 
 func mtrNumDashCheck(str string) int {

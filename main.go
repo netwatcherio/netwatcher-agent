@@ -11,7 +11,6 @@ import (
 	"os/signal"
 	"runtime"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -32,25 +31,37 @@ func main() {
 	clientCfg := api.NewClientConfig()
 	client := api.NewClient(clientCfg)
 
-	// initialize the data from api
+	// initialize the apiClient from api
 	// todo make this a loop that checks periodically as well as handles the errors and retries
-	data := api.Data{
+	apiClient := api.Data{
 		Client: client,
-		PIN:    os.Getenv("PIN"),
-		ID:     os.Getenv("ID"),
 	}
 
+	apiRequest := api.ApiRequest{ID: os.Getenv("ID"), PIN: os.Getenv("PIN")}
+	var checkData []api.AgentCheck
+
 	for {
-		err := data.Initialize()
+		err := apiClient.Initialize(&apiRequest)
 		if err != nil {
 			fmt.Println(err)
 		}
 
-		/*data.Checks = append(data.Checks, checks.CheckData{Type: "MTR", Target: "vultr1.gw.dec0de.xyz", Duration: 5})
-		data.Checks = append(data.Checks, checks.CheckData{Type: "MTR", Target: "ovh1.gw.dec0de.xyz", Duration: 5})
-		data.Checks = append(data.Checks, checks.CheckData{Type: "SPEEDTEST"})*/
+		/*apiClient.Checks = append(apiClient.Checks, checks.CheckData{Type: "MTR", Target: "vultr1.gw.dec0de.xyz", Duration: 5})
+		apiClient.Checks = append(apiClient.Checks, checks.CheckData{Type: "MTR", Target: "ovh1.gw.dec0de.xyz", Duration: 5})
+		apiClient.Checks = append(apiClient.Checks, checks.CheckData{Type: "SPEEDTEST"})*/
 
-		if len(data.Checks) <= 0 {
+		b, err := json.Marshal(apiRequest.Data)
+		if err != nil {
+			log.Println(err)
+		}
+		log.Println(string(b))
+
+		err = json.Unmarshal(b, &checkData)
+		if err != nil {
+			log.Println(err)
+		}
+
+		if len(checkData) <= 0 {
 			fmt.Println("no checks received, waiting for 10 seconds")
 			time.Sleep(time.Second * 10)
 		} else {
@@ -58,31 +69,43 @@ func main() {
 		}
 	}
 
-	dd := make(chan checks.CheckData)
-	for _, d := range data.Checks {
-		agId, err := primitive.ObjectIDFromHex(data.ID)
+	dd := make(chan api.CheckData)
+	for _, d := range checkData {
+		agId, err := primitive.ObjectIDFromHex(apiRequest.ID)
 		if err != nil {
 			log.Fatal(err)
 		}
 		d.AgentID = agId
 
 		time.Sleep(time.Millisecond)
-		switch strings.ToUpper(d.Type) {
-		case "MTR":
-			go func(checkData checks.CheckData) {
+		switch d.Type {
+		case api.CtMtr:
+			go func(ac api.AgentCheck) {
 				for {
-					interval, _ := strconv.Atoi(checkData.Interval)
-
-					fmt.Println("Running mtr test for ", checkData.Target, "...")
-					mtr := checks.MtrResult{}
-					err := mtr.Check(&checkData, false)
+					fmt.Println("Running mtr test for ", ac.Target, "...")
+					mtr, err := checks.CheckMtr(&ac, false)
 					if err != nil {
 						fmt.Println(err)
 					}
-					fmt.Println("Sending data to the channel (MTR) for ", checkData.Target, "...")
-					dd <- checkData
-					fmt.Println("sleeping for " + checkData.Interval + " minutes")
-					time.Sleep(time.Duration(time.Minute.Minutes() * float64(interval)))
+
+					m, err := json.Marshal(mtr)
+					if err != nil {
+						fmt.Print(err)
+					}
+
+					cD := api.CheckData{
+						Target:    ac.Target,
+						CheckID:   ac.ID,
+						AgentID:   ac.AgentID,
+						Triggered: mtr.Triggered,
+						Result:    string(m),
+						Type:      api.CtMtr,
+					}
+
+					fmt.Println("Sending apiClient to the channel (MTR) for ", ac.Interval, "...")
+					dd <- cD
+					fmt.Println("sleeping for " + strconv.Itoa(ac.Interval) + " minutes")
+					time.Sleep(time.Duration(ac.Interval) * time.Minute)
 				}
 			}(d)
 			// todo push
@@ -90,48 +113,65 @@ func main() {
 		case "RPERF":
 			// if check says its a server, start a iperf server based on the bind and port provided in target
 			if d.Server {
-				/*func(checkData checks.CheckData) {
-					rperf := checks.RPerfResults{}
-					err := rperf.Check(&checkData)
-					if err != nil {
-						fmt.Println(err)
-					}
-				}(d)*/
 			}
-			go func(checkData checks.CheckData) {
+			go func(ac api.AgentCheck) {
 				for {
 					//todo
 					//make this continue to run, however, make it check if the latest version of the check
-					//data contains it, if not, then break out of this thread
+					//apiClient contains it, if not, then break out of this thread
 
-					fmt.Println("Running rperf test for ", checkData.Target, "...")
+					fmt.Println("Running rperf test for ", ac.Target, "...")
 					rperf := checks.RPerfResults{}
-					err := rperf.Check(&checkData)
+					err := rperf.Check(&ac)
 					if err != nil {
 						fmt.Println(err)
 						fmt.Println("something went wrong processing rperf... sleeping for 10 seconds")
 						time.Sleep(time.Second * 10)
 					}
-					/*fmt.Println("something went wrong processing rperf... sleeping for 10 seconds")
-					time.Sleep(time.Second * 10)*/
 
-					fmt.Println("Sending data to the channel (RPERF) for ", checkData.Target, "...")
-					dd <- checkData
+					m, err := json.Marshal(rperf)
+					if err != nil {
+						fmt.Print(err)
+					}
+
+					cD := api.CheckData{
+						Target:  ac.Target,
+						CheckID: ac.ID,
+						AgentID: ac.AgentID,
+						Result:  string(m),
+						Type:    api.CtRperf,
+					}
+
+					fmt.Println("Sending apiClient to the channel (RPERF) for ", ac.Target, "...")
+					dd <- cD
 				}
 			}(d)
 			break
 		case "SPEEDTEST":
-			go func(checkData checks.CheckData) {
+			go func(ac api.AgentCheck) {
 				//for {
-				if checkData.Pending {
+				if ac.Pending {
 					fmt.Println("Running speed test...")
-					speedtest := checks.SpeedTest{}
-					err := speedtest.Check(&checkData)
+					speedtest, err := checks.CheckSpeedTest(&ac)
 					if err != nil {
 						fmt.Println(err)
 						return
 					}
-					dd <- checkData
+
+					m, err := json.Marshal(speedtest)
+					if err != nil {
+						fmt.Print(err)
+					}
+
+					cD := api.CheckData{
+						Target:  ac.Target,
+						CheckID: ac.ID,
+						AgentID: ac.AgentID,
+						Result:  string(m),
+						Type:    api.CtSpeedtest,
+					}
+
+					dd <- cD
 
 					//todo make this onyl run once, because when it uploads to the server, it will disable it,
 					//todo preventing it from being in the configuration after
@@ -141,15 +181,28 @@ func main() {
 			}(d)
 			break
 		case "NETINFO":
-			go func(checkData checks.CheckData) {
+			go func(ac api.AgentCheck) {
 				for {
 					fmt.Println("Checking networking information...")
-					net := checks.NetResult{}
-					err := net.Check(&checkData)
+					net, err := checks.CheckNet()
 					if err != nil {
 						fmt.Println(err)
 					}
-					dd <- checkData
+
+					m, err := json.Marshal(net)
+					if err != nil {
+						fmt.Print(err)
+					}
+
+					cD := api.CheckData{
+						Target:  ac.Target,
+						CheckID: ac.ID,
+						AgentID: ac.AgentID,
+						Result:  string(m),
+						Type:    api.CtNetinfo,
+					}
+
+					dd <- cD
 
 					// todo make configurable??
 					time.Sleep(time.Minute * 10)
@@ -166,27 +219,33 @@ func main() {
 	}
 
 	// init queue
-	queue := data
-	queue.Checks = nil
-	queue.Error = ""
+	queue := api.ApiRequest{
+		PIN:   apiRequest.PIN,
+		ID:    apiRequest.ID,
+		Data:  nil,
+		Error: "",
+	}
+
+	var queueData []api.CheckData
 
 	for {
 		cD := <-dd
-		queue.Checks = append(queue.Checks, cD)
+		queueData = append(queueData, cD)
 		// make new object??
-		marshal, err := json.Marshal(queue)
-		if err != nil {
-			return
-		}
-		print("\n\n\n--------------------------\n" + string(marshal) + "\n--------------------------\n\n\n")
 
-		err = queue.Push()
+		m, err := json.Marshal(queueData)
+		queue.Data = string(m)
+
+		print("\n\n\n--------------------------\n" + string(m) + "\n--------------------------\n\n\n")
+
+		err = apiClient.Push(&queue)
 		if err != nil {
 			// handle error on push and save queue for next time??
-			log.Println("unable to push data, keeping queue and waiting...")
+			log.Println("unable to push apiClient, keeping queue and waiting...")
 			continue
 		}
-		queue.Checks = nil
+		queueData = nil
+		queue.Data = nil
 	}
 }
 
