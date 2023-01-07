@@ -20,12 +20,12 @@ type CheckData struct {
 	Target    string             `json:"address,omitempty"bson:"target,omitempty"`
 	ID        primitive.ObjectID `json:"id"bson:"_id"`
 	AgentID   primitive.ObjectID `json:"agent_id"bson:"agent_id"`
-	Duration  int32              `json:"interval,omitempty'"bson:"duration"`
-	Count     int32              `json:"count,omitempty"`
+	Duration  string             `json:"interval,omitempty'"bson:"duration"`
+	Count     string             `json:"count,omitempty"`
 	Triggered bool               `json:"triggered"bson:"triggered,omitempty"`
 	ToRemove  bool               `json:"to_remove"bson:"to_remove,omitempty"`
 	Pending   bool               `json:"pending"`                 // only used to see if a speedtest is waiting, maybe for other checks eventually
-	Interval  int32              `json:"interval"bson:"interval"` // in minutes, used for mtr checks and such
+	Interval  string             `json:"interval"bson:"interval"` // in minutes, used for mtr checks and such
 	Result    interface{}        `json:"result"bson:"result,omitempty"`
 	Server    bool               `json:"server,omitempty"bson:"server,omitempty"`
 }
