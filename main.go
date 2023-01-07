@@ -71,7 +71,7 @@ func main() {
 		case "MTR":
 			go func(checkData checks.CheckData) {
 				for {
-					interval := checkData.Interval
+					interval, _ := strconv.Atoi(checkData.Interval)
 
 					fmt.Println("Running mtr test for ", checkData.Target, "...")
 					mtr := checks.MtrResult{}
@@ -81,7 +81,7 @@ func main() {
 					}
 					fmt.Println("Sending data to the channel (MTR) for ", checkData.Target, "...")
 					dd <- checkData
-					fmt.Println("sleeping for " + strconv.Itoa(int(interval)) + " minutes")
+					fmt.Println("sleeping for " + checkData.Interval + " minutes")
 					time.Sleep(time.Duration(time.Minute.Minutes() * float64(interval)))
 				}
 			}(d)

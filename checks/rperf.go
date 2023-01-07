@@ -8,7 +8,6 @@ import (
 	"log"
 	"os/exec"
 	"runtime"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -102,7 +101,7 @@ func (r *RPerfResults) Check(cd *CheckData) error {
 		break
 	case "darwin":
 		targetHost := strings.Split(cd.Target, ":")
-		args := []string{"-c", "./lib/rperf_darwin -c " + targetHost[0] + " -p " + targetHost[1] + " -b 8K -t " + strconv.Itoa(int(cd.Duration)) + " --udp -f json"}
+		args := []string{"-c", "./lib/rperf_darwin -c " + targetHost[0] + " -p " + targetHost[1] + " -b 8K -t " + cd.Duration + " --udp -f json"}
 		cmd = exec.CommandContext(context.TODO(), "/bin/bash", args...)
 		break
 	case "linux":
