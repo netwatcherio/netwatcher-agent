@@ -66,7 +66,7 @@ func CheckMtr(cd *api.AgentCheck, triggered bool) (MtrResult, error) {
 	case "linux":
 		// mtr needs to be installed manually currently
 		args := []string{cd.Target, "-z", "--show-ips", "-o LDRSBAWVGJMXI", "--json"}
-		cmd = exec.CommandContext(context.TODO(), "mtr", args...)
+		cmd = exec.CommandContext(context.TODO(), "./lib/mtr_linux64", args...)
 		break
 
 		break
