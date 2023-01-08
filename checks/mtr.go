@@ -54,6 +54,9 @@ func CheckMtr(cd *api.AgentCheck, triggered bool) (MtrResult, error) {
 	var cmd *exec.Cmd
 	switch osDetect {
 	case "windows":
+		// mtr needs to be installed manually currently
+		args := []string{"/C", "/lib/mtr_windows_x86" + cd.Target + " -z --show-ips -o LDRSBAWVGJMXI --json"}
+		cmd = exec.CommandContext(context.TODO(), "cmd", args...)
 		break
 	case "darwin":
 		// mtr needs to be installed manually currently
@@ -61,6 +64,10 @@ func CheckMtr(cd *api.AgentCheck, triggered bool) (MtrResult, error) {
 		cmd = exec.CommandContext(context.TODO(), "/bin/bash", args...)
 		break
 	case "linux":
+		// mtr needs to be installed manually currently
+		args := []string{"-c", "mtr" + cd.Target + " -z --show-ips -o LDRSBAWVGJMXI --json"}
+		cmd = exec.CommandContext(context.TODO(), "/bin/bash", args...)
+		break
 
 		break
 	default:
@@ -71,12 +78,12 @@ func CheckMtr(cd *api.AgentCheck, triggered bool) (MtrResult, error) {
 	output, err := cmd.Output()
 	fmt.Printf("%s\n", output)
 	if err != nil {
-		return mtrResult, nil
+		return mtrResult, err
 	}
 
 	err = json.Unmarshal(output, &mtrResult)
 	if err != nil {
-		return mtrResult, nil
+		return mtrResult, err
 	}
 	/*r.StopTimestamp = time.Now()*/
 	mtrResult.StopTimestamp = time.Now()

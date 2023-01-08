@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/netwatcherio/netwatcher-agent/api"
 	"github.com/netwatcherio/netwatcher-agent/checks"
+	"github.com/netwatcherio/netwatcher-agent/workers"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"log"
 	"os"
@@ -38,39 +39,66 @@ func main() {
 	}
 
 	apiRequest := api.ApiRequest{ID: os.Getenv("ID"), PIN: os.Getenv("PIN")}
-	var checkData []api.AgentCheck
+
+	// init queue
+	queueReq := api.ApiRequest{
+		PIN:   apiRequest.PIN,
+		ID:    apiRequest.ID,
+		Data:  nil,
+		Error: "",
+	}
+	checkDataCh := make(chan api.CheckData)
+
+	workers.InitQueueWorker(checkDataCh, queueReq, apiClient)
+
+	agentC := make(chan api.AgentCheck)
+
+	var updateReceived = false
+
+	// todo keep track of running tests once started, tests actively running cannot be changed only removed or *disabled
+	go func(cd chan api.AgentCheck, received bool) {
+		newCfg := true
+		for {
+			err := apiClient.Initialize(&apiRequest)
+			if err != nil {
+				fmt.Println(err)
+			}
+
+			b, err := json.Marshal(apiRequest.Data)
+			if err != nil {
+				log.Println(err)
+			}
+			log.Println("Update received: ", string(b))
+
+			var ce []api.AgentCheck
+
+			err = json.Unmarshal(b, &ce)
+			if err != nil {
+				log.Println(err)
+			}
+
+			if len(ce) <= 0 {
+				fmt.Println("no checks received, waiting for 10 seconds")
+				time.Sleep(time.Second * 10)
+				continue
+			}
+			if !newCfg {
+				received = true
+			}
+
+			if newCfg {
+				newCfg = false
+			}
+
+			for i := range ce {
+				cd <- ce[i]
+			}
+			time.Sleep(5 * time.Minute)
+		}
+	}(agentC, updateReceived)
 
 	for {
-		err := apiClient.Initialize(&apiRequest)
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		/*apiClient.Checks = append(apiClient.Checks, checks.CheckData{Type: "MTR", Target: "vultr1.gw.dec0de.xyz", Duration: 5})
-		apiClient.Checks = append(apiClient.Checks, checks.CheckData{Type: "MTR", Target: "ovh1.gw.dec0de.xyz", Duration: 5})
-		apiClient.Checks = append(apiClient.Checks, checks.CheckData{Type: "SPEEDTEST"})*/
-
-		b, err := json.Marshal(apiRequest.Data)
-		if err != nil {
-			log.Println(err)
-		}
-		log.Println(string(b))
-
-		err = json.Unmarshal(b, &checkData)
-		if err != nil {
-			log.Println(err)
-		}
-
-		if len(checkData) <= 0 {
-			fmt.Println("no checks received, waiting for 10 seconds")
-			time.Sleep(time.Second * 10)
-		} else {
-			break
-		}
-	}
-
-	dd := make(chan api.CheckData)
-	for _, d := range checkData {
+		d := <-agentC
 		agId, err := primitive.ObjectIDFromHex(apiRequest.ID)
 		if err != nil {
 			log.Fatal(err)
@@ -82,6 +110,9 @@ func main() {
 		case api.CtMtr:
 			go func(ac api.AgentCheck) {
 				for {
+					if updateReceived {
+						break
+					}
 					fmt.Println("Running mtr test for ", ac.Target, "...")
 					mtr, err := checks.CheckMtr(&ac, false)
 					if err != nil {
@@ -103,19 +134,22 @@ func main() {
 					}
 
 					fmt.Println("Sending apiClient to the channel (MTR) for ", ac.Interval, "...")
-					dd <- cD
+					checkDataCh <- cD
 					fmt.Println("sleeping for " + strconv.Itoa(ac.Interval) + " minutes")
 					time.Sleep(time.Duration(ac.Interval) * time.Minute)
 				}
 			}(d)
 			// todo push
-			break
+			continue
 		case "RPERF":
 			// if check says its a server, start a iperf server based on the bind and port provided in target
 			if d.Server {
 			}
 			go func(ac api.AgentCheck) {
 				for {
+					if updateReceived {
+						break
+					}
 					//todo
 					//make this continue to run, however, make it check if the latest version of the check
 					//apiClient contains it, if not, then break out of this thread
@@ -143,13 +177,12 @@ func main() {
 					}
 
 					fmt.Println("Sending apiClient to the channel (RPERF) for ", ac.Target, "...")
-					dd <- cD
+					checkDataCh <- cD
 				}
 			}(d)
-			break
+			continue
 		case "SPEEDTEST":
 			go func(ac api.AgentCheck) {
-				//for {
 				if ac.Pending {
 					fmt.Println("Running speed test...")
 					speedtest, err := checks.CheckSpeedTest(&ac)
@@ -171,7 +204,7 @@ func main() {
 						Type:    api.CtSpeedtest,
 					}
 
-					dd <- cD
+					checkDataCh <- cD
 
 					//todo make this onyl run once, because when it uploads to the server, it will disable it,
 					//todo preventing it from being in the configuration after
@@ -179,10 +212,14 @@ func main() {
 					//}
 				}
 			}(d)
-			break
+			continue
 		case "NETINFO":
 			go func(ac api.AgentCheck) {
 				for {
+					if updateReceived {
+						break
+					}
+
 					fmt.Println("Checking networking information...")
 					net, err := checks.CheckNet()
 					if err != nil {
@@ -202,50 +239,20 @@ func main() {
 						Type:    api.CtNetinfo,
 					}
 
-					dd <- cD
+					checkDataCh <- cD
 
 					// todo make configurable??
 					time.Sleep(time.Minute * 10)
 				}
 			}(d)
-			break
+			continue
 
 		// todo other checks like port scans etc.
 
 		default:
 			fmt.Println("Unknown type of check...")
-			break
-		}
-	}
-
-	// init queue
-	queue := api.ApiRequest{
-		PIN:   apiRequest.PIN,
-		ID:    apiRequest.ID,
-		Data:  nil,
-		Error: "",
-	}
-
-	var queueData []api.CheckData
-
-	for {
-		cD := <-dd
-		queueData = append(queueData, cD)
-		// make new object??
-
-		m, err := json.Marshal(queueData)
-		queue.Data = string(m)
-
-		print("\n\n\n--------------------------\n" + string(m) + "\n--------------------------\n\n\n")
-
-		err = apiClient.Push(&queue)
-		if err != nil {
-			// handle error on push and save queue for next time??
-			log.Println("unable to push apiClient, keeping queue and waiting...")
 			continue
 		}
-		queueData = nil
-		queue.Data = nil
 	}
 }
 

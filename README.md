@@ -29,6 +29,11 @@ Currently it is best to be built from source, and the latest code is not product
 
 Just look at commits, eventually I'll make a change log once more stable.
 
+## Libraries
+
+- https://github.com/opensource-3d-p/rperf
+- https://github.com/traviscross/mtr
+
 # License
 
 [`GNU Affero General Public License v3.0`](https://github.com/netwatcherio/netwatcher-agent/blob/master/LICENSE.md)
