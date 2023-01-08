@@ -19,7 +19,7 @@ type MtrResult struct {
 		Mtr struct {
 			Src        string `json:"src"bson:"src"`
 			Dst        string `json:"dst"bson:"dst"`
-			Tos        int    `json:"tos"bson:"tos"`
+			Tos        string `json:"tos"bson:"tos"`
 			Tests      int    `json:"tests"bson:"tests"`
 			Psize      string `json:"psize"bson:"psize"`
 			Bitpattern string `json:"bitpattern"bson:"bitpattern"`
