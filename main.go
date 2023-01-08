@@ -29,7 +29,12 @@ func main() {
 	}()
 
 	setup()
-	clientCfg := api.NewClientConfig()
+	clientCfg := api.ClientConfig{
+		APIHost:     os.Getenv("HOST"),
+		HTTPTimeout: 10 * time.Second,
+		DialTimeout: 5 * time.Second,
+		TLSTimeout:  5 * time.Second,
+	}
 	client := api.NewClient(clientCfg)
 
 	// initialize the apiClient from api
