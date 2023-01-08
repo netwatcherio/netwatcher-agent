@@ -55,18 +55,18 @@ func CheckMtr(cd *api.AgentCheck, triggered bool) (MtrResult, error) {
 	switch osDetect {
 	case "windows":
 		// mtr needs to be installed manually currently
-		args := []string{"/C", "/lib/mtr_windows_x86", cd.Target, "-z", "--show-ips", "-o LDRSBAWVGJMXI", "--json"}
-		cmd = exec.CommandContext(context.TODO(), "cmd", args...)
+		args := []string{"./lib/mtr_windows_x86", cd.Target, "-z", "--show-ips", "-o LDRSBAWVGJMXI", "--json"}
+		cmd = exec.CommandContext(context.TODO(), "cmd /C", args...)
 		break
 	case "darwin":
 		// mtr needs to be installed manually currently
-		args := []string{"-c", "./lib/mtr_darwin", cd.Target, "-z", "--show-ips", "-o LDRSBAWVGJMXI", "--json"}
-		cmd = exec.CommandContext(context.TODO(), "/bin/bash", args...)
+		args := []string{"./lib/mtr_darwin", cd.Target, "-z", "--show-ips", "-o LDRSBAWVGJMXI", "--json"}
+		cmd = exec.CommandContext(context.TODO(), "/bin/bash -c", args...)
 		break
 	case "linux":
 		// mtr needs to be installed manually currently
-		args := []string{cd.Target, "-z", "--show-ips", "-o LDRSBAWVGJMXI", "--json"}
-		cmd = exec.CommandContext(context.TODO(), "./lib/mtr_linux64", args...)
+		args := []string{"./lib/mtr_linux64", cd.Target, "-z", "--show-ips", "-o LDRSBAWVGJMXI", "--json"}
+		cmd = exec.CommandContext(context.TODO(), "/bin/bash -c", args...)
 		break
 
 		break
