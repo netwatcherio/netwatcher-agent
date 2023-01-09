@@ -116,28 +116,38 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan api.CheckData) {
 
 				fmt.Println("Running rperf test for ", agentCheck.Target, "...")
 				rperf := checks.RPerfResults{}
-				err := rperf.Check(&agentCheck)
-				if err != nil {
-					fmt.Println(err)
-					fmt.Println("something went wrong processing rperf... sleeping for 10 seconds")
-					time.Sleep(time.Second * 10)
-				}
 
-				m, err := json.Marshal(rperf)
-				if err != nil {
-					fmt.Print(err)
-				}
+				if agentCheck.Server {
+					err := rperf.Run(&agentCheck)
+					if err != nil {
+						fmt.Println(err)
+						fmt.Println("something went wrong processing rperf server... sleeping for 10 seconds")
+						time.Sleep(time.Second * 10)
+					}
+				} else {
+					err := rperf.Check(&agentCheck)
+					if err != nil {
+						fmt.Println(err)
+						fmt.Println("something went wrong processing rperf... sleeping for 10 seconds")
+						time.Sleep(time.Second * 10)
+					}
 
-				cD := api.CheckData{
-					Target:  agentCheck.Target,
-					CheckID: agentCheck.ID,
-					AgentID: agentCheck.AgentID,
-					Result:  string(m),
-					Type:    api.CtRperf,
-				}
+					m, err := json.Marshal(rperf)
+					if err != nil {
+						fmt.Print(err)
+					}
 
-				fmt.Println("Sending apiClient to the channel (RPERF) for ", agentCheck.Target, "...")
-				dC <- cD
+					cD := api.CheckData{
+						Target:  agentCheck.Target,
+						CheckID: agentCheck.ID,
+						AgentID: agentCheck.AgentID,
+						Result:  string(m),
+						Type:    api.CtRperf,
+					}
+
+					fmt.Println("Sending apiClient to the channel (RPERF) for ", agentCheck.Target, "...")
+					dC <- cD
+				}
 				break
 			case "SPEEDTEST":
 				if agentCheck.Pending {

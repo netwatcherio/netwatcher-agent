@@ -93,6 +93,42 @@ type RPerfResults struct {
 
 //./rperf -c 0.0.0.0 -p 5199 -b 8K -t 10 --udp -f json
 
+func (r *RPerfResults) Run(cd *api.AgentCheck) error {
+	osDetect := runtime.GOOS
+	r.StartTimestamp = time.Now()
+
+	var cmd *exec.Cmd
+	switch osDetect {
+	case "windows":
+		targetHost := strings.Split(cd.Target, ":")
+		args := []string{"C/", "./lib/rperf_windows64 -s -p " + targetHost[1]}
+		cmd = exec.CommandContext(context.TODO(), "cmd", args...)
+		break
+	case "darwin":
+		targetHost := strings.Split(cd.Target, ":")
+		args := []string{"-c", "./lib/rperf_darwin -s -p " + targetHost[1]}
+		cmd = exec.CommandContext(context.TODO(), "/bin/bash", args...)
+		break
+	case "linux":
+		targetHost := strings.Split(cd.Target, ":")
+		args := []string{"-c", "./lib/rperf_linux64 -s -p " + targetHost[1]}
+		cmd = exec.CommandContext(context.TODO(), "/bin/bash", args...)
+		break
+		break
+	default:
+		log.Fatalf("Unknown OS")
+		panic("TODO")
+	}
+
+	out, err := cmd.CombinedOutput()
+	fmt.Printf("%s\n", out)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (r *RPerfResults) Check(cd *api.AgentCheck) error {
 	osDetect := runtime.GOOS
 	r.StartTimestamp = time.Now()
@@ -100,6 +136,9 @@ func (r *RPerfResults) Check(cd *api.AgentCheck) error {
 	var cmd *exec.Cmd
 	switch osDetect {
 	case "windows":
+		targetHost := strings.Split(cd.Target, ":")
+		args := []string{"C/", "./lib/rperf_windows64 -c " + targetHost[0] + " -p " + targetHost[1] + " -b 8K -t " + strconv.Itoa(cd.Duration) + " --udp -f json"}
+		cmd = exec.CommandContext(context.TODO(), "cmd", args...)
 		break
 	case "darwin":
 		targetHost := strings.Split(cd.Target, ":")
@@ -107,7 +146,10 @@ func (r *RPerfResults) Check(cd *api.AgentCheck) error {
 		cmd = exec.CommandContext(context.TODO(), "/bin/bash", args...)
 		break
 	case "linux":
-
+		targetHost := strings.Split(cd.Target, ":")
+		args := []string{"-c", "./lib/rperf_linux64 -c " + targetHost[0] + " -p " + targetHost[1] + " -b 8K -t " + strconv.Itoa(cd.Duration) + " --udp -f json"}
+		cmd = exec.CommandContext(context.TODO(), "/bin/bash", args...)
+		break
 		break
 	default:
 		log.Fatalf("Unknown OS")
