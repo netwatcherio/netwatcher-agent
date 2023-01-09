@@ -101,7 +101,7 @@ func (r *RPerfResults) Run(cd *api.AgentCheck) error {
 	switch osDetect {
 	case "windows":
 		targetHost := strings.Split(cd.Target, ":")
-		args := []string{"C/", "./lib/rperf_windows64 -s -p " + targetHost[1]}
+		args := []string{"C/", "./lib/rperf_windows64 -s -p" + targetHost[1]}
 		cmd = exec.CommandContext(context.TODO(), "cmd", args...)
 		break
 	case "darwin":
