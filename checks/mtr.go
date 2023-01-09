@@ -25,7 +25,7 @@ type MtrResult struct {
 			Bitpattern string `json:"bitpattern"bson:"bitpattern"`
 		} `json:"mtr"bson:"mtr"`
 		Hubs []struct {
-			Count int     `json:"count"bson:"count"`
+			Count string  `json:"count"bson:"count"`
 			Host  string  `json:"host"bson:"host"`
 			ASN   string  `json:"ASN"bson:"ASN"`
 			Loss  float64 `json:"Loss%"bson:"Loss%"`
