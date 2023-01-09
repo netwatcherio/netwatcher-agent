@@ -17,30 +17,30 @@ type MtrResult struct {
 	Triggered      bool      `bson:"triggered"json:"triggered"`
 	Report         struct {
 		Mtr struct {
-			Src        string `json:"src"bson:"src"`
-			Dst        string `json:"dst"bson:"dst"`
-			Tos        string `json:"tos"bson:"tos"`
-			Tests      string `json:"tests"bson:"tests"`
-			Psize      string `json:"psize"bson:"psize"`
-			Bitpattern string `json:"bitpattern"bson:"bitpattern"`
+			Src        string      `json:"src"bson:"src"`
+			Dst        string      `json:"dst"bson:"dst"`
+			Tos        interface{} `json:"tos"bson:"tos"`
+			Tests      string      `json:"tests"bson:"tests"`
+			Psize      string      `json:"psize"bson:"psize"`
+			Bitpattern string      `json:"bitpattern"bson:"bitpattern"`
 		} `json:"mtr"bson:"mtr"`
 		Hubs []struct {
-			Count string  `json:"count"bson:"count"`
-			Host  string  `json:"host"bson:"host"`
-			ASN   string  `json:"ASN"bson:"ASN"`
-			Loss  float64 `json:"Loss%"bson:"Loss%"`
-			Drop  int     `json:"Drop"bson:"Drop"`
-			Rcv   int     `json:"Rcv"bson:"Rcv"`
-			Snt   int     `json:"Snt"bson:"Snt"`
-			Best  float64 `json:"Best"bson:"Best"`
-			Avg   float64 `json:"Avg"bson:"Avg"`
-			Wrst  float64 `json:"Wrst"bson:"Wrst"`
-			StDev float64 `json:"StDev"bson:"StDev"`
-			Gmean float64 `json:"Gmean"bson:"Gmean"`
-			Jttr  float64 `json:"Jttr"bson:"Jttr"`
-			Javg  float64 `json:"Javg"bson:"Javg"`
-			Jmax  float64 `json:"Jmax"bson:"Jmax"`
-			Jint  float64 `json:"Jint"bson:"Jint"`
+			Count interface{} `json:"count"bson:"count"`
+			Host  string      `json:"host"bson:"host"`
+			ASN   string      `json:"ASN"bson:"ASN"`
+			Loss  float64     `json:"Loss%"bson:"Loss%"`
+			Drop  int         `json:"Drop"bson:"Drop"`
+			Rcv   int         `json:"Rcv"bson:"Rcv"`
+			Snt   int         `json:"Snt"bson:"Snt"`
+			Best  float64     `json:"Best"bson:"Best"`
+			Avg   float64     `json:"Avg"bson:"Avg"`
+			Wrst  float64     `json:"Wrst"bson:"Wrst"`
+			StDev float64     `json:"StDev"bson:"StDev"`
+			Gmean float64     `json:"Gmean"bson:"Gmean"`
+			Jttr  float64     `json:"Jttr"bson:"Jttr"`
+			Javg  float64     `json:"Javg"bson:"Javg"`
+			Jmax  float64     `json:"Jmax"bson:"Jmax"`
+			Jint  float64     `json:"Jint"bson:"Jint"`
 		} `json:"hubs"bson:"hubs"`
 	} `json:"report"bson:"report"`
 }
