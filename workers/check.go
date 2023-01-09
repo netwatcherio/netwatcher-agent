@@ -121,15 +121,16 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan api.CheckData) {
 					err := rperf.Run(&agentCheck)
 					if err != nil {
 						fmt.Println(err)
-						fmt.Println("something went wrong processing rperf server... sleeping for 10 seconds")
-						time.Sleep(time.Second * 10)
+						fmt.Println("exiting loop, please check firewall, and recreate check, you may need to reboot")
+						time.Sleep(time.Second * 30)
+						break
 					}
 				} else {
 					err := rperf.Check(&agentCheck)
 					if err != nil {
 						fmt.Println(err)
-						fmt.Println("something went wrong processing rperf... sleeping for 10 seconds")
-						time.Sleep(time.Second * 10)
+						fmt.Println("something went wrong processing rperf... sleeping for 30 seconds")
+						time.Sleep(time.Second * 30)
 					}
 
 					m, err := json.Marshal(rperf)
@@ -148,7 +149,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan api.CheckData) {
 					fmt.Println("Sending apiClient to the channel (RPERF) for ", agentCheck.Target, "...")
 					dC <- cD
 				}
-				break
+				continue
 			case "SPEEDTEST":
 				if agentCheck.Pending {
 					fmt.Println("Running speed test...")
