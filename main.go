@@ -4,14 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/netwatcherio/netwatcher-agent/api"
-	"github.com/netwatcherio/netwatcher-agent/checks"
 	"github.com/netwatcherio/netwatcher-agent/workers"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"log"
 	"os"
 	"os/signal"
 	"runtime"
-	"strconv"
 	"time"
 )
 
@@ -53,16 +50,15 @@ func main() {
 		Error: "",
 	}
 	checkDataCh := make(chan api.CheckData)
+	agentC := make(chan []api.AgentCheck)
 
 	workers.InitQueueWorker(checkDataCh, queueReq, apiClient)
-
-	agentC := make(chan api.AgentCheck)
+	workers.InitCheckWorker(agentC, checkDataCh)
 
 	var updateReceived = false
 
 	// todo keep track of running tests once started, tests actively running cannot be changed only removed or *disabled
-	go func(cd chan api.AgentCheck, received bool) {
-		newCfg := true
+	go func(cd chan []api.AgentCheck, received bool) {
 		for {
 			err := apiClient.Initialize(&apiRequest)
 			if err != nil {
@@ -73,7 +69,7 @@ func main() {
 			if err != nil {
 				log.Println(err)
 			}
-			log.Println("Update received: ", string(b))
+			log.Println("Config received: ", string(b))
 
 			var ce []api.AgentCheck
 
@@ -87,178 +83,14 @@ func main() {
 				time.Sleep(time.Second * 10)
 				continue
 			}
-			if !newCfg {
-				received = true
-			}
 
-			if newCfg {
-				newCfg = false
-			}
+			cd <- ce
 
-			for i := range ce {
-				cd <- ce[i]
-			}
-			time.Sleep(5 * time.Minute)
+			time.Sleep(10 * time.Second)
 		}
 	}(agentC, updateReceived)
 
-	for {
-		d := <-agentC
-		agId, err := primitive.ObjectIDFromHex(apiRequest.ID)
-		if err != nil {
-			log.Fatal(err)
-		}
-		d.AgentID = agId
-
-		time.Sleep(time.Millisecond)
-		switch d.Type {
-		case api.CtMtr:
-			go func(ac api.AgentCheck) {
-				for {
-					if updateReceived {
-						break
-					}
-					fmt.Println("Running mtr test for ", ac.Target, "...")
-					mtr, err := checks.CheckMtr(&ac, false)
-					if err != nil {
-						fmt.Println(err)
-					}
-
-					m, err := json.Marshal(mtr)
-					if err != nil {
-						fmt.Print(err)
-					}
-
-					cD := api.CheckData{
-						Target:    ac.Target,
-						CheckID:   ac.ID,
-						AgentID:   ac.AgentID,
-						Triggered: mtr.Triggered,
-						Result:    string(m),
-						Type:      api.CtMtr,
-					}
-
-					fmt.Println("Sending apiClient to the channel (MTR) for ", ac.Interval, "...")
-					checkDataCh <- cD
-					fmt.Println("sleeping for " + strconv.Itoa(ac.Interval) + " minutes")
-					time.Sleep(time.Duration(ac.Interval) * time.Minute)
-				}
-			}(d)
-			// todo push
-			continue
-		case "RPERF":
-			// if check says its a server, start a iperf server based on the bind and port provided in target
-			if d.Server {
-			}
-			go func(ac api.AgentCheck) {
-				for {
-					if updateReceived {
-						break
-					}
-					//todo
-					//make this continue to run, however, make it check if the latest version of the check
-					//apiClient contains it, if not, then break out of this thread
-
-					fmt.Println("Running rperf test for ", ac.Target, "...")
-					rperf := checks.RPerfResults{}
-					err := rperf.Check(&ac)
-					if err != nil {
-						fmt.Println(err)
-						fmt.Println("something went wrong processing rperf... sleeping for 10 seconds")
-						time.Sleep(time.Second * 10)
-					}
-
-					m, err := json.Marshal(rperf)
-					if err != nil {
-						fmt.Print(err)
-					}
-
-					cD := api.CheckData{
-						Target:  ac.Target,
-						CheckID: ac.ID,
-						AgentID: ac.AgentID,
-						Result:  string(m),
-						Type:    api.CtRperf,
-					}
-
-					fmt.Println("Sending apiClient to the channel (RPERF) for ", ac.Target, "...")
-					checkDataCh <- cD
-				}
-			}(d)
-			continue
-		case "SPEEDTEST":
-			go func(ac api.AgentCheck) {
-				if ac.Pending {
-					fmt.Println("Running speed test...")
-					speedtest, err := checks.CheckSpeedTest(&ac)
-					if err != nil {
-						fmt.Println(err)
-						return
-					}
-
-					m, err := json.Marshal(speedtest)
-					if err != nil {
-						fmt.Print(err)
-					}
-
-					cD := api.CheckData{
-						Target:  ac.Target,
-						CheckID: ac.ID,
-						AgentID: ac.AgentID,
-						Result:  string(m),
-						Type:    api.CtSpeedtest,
-					}
-
-					checkDataCh <- cD
-
-					//todo make this onyl run once, because when it uploads to the server, it will disable it,
-					//todo preventing it from being in the configuration after
-					//time.Sleep(time.Minute * 5)
-					//}
-				}
-			}(d)
-			continue
-		case "NETINFO":
-			go func(ac api.AgentCheck) {
-				for {
-					if updateReceived {
-						break
-					}
-
-					fmt.Println("Checking networking information...")
-					net, err := checks.CheckNet()
-					if err != nil {
-						fmt.Println(err)
-					}
-
-					m, err := json.Marshal(net)
-					if err != nil {
-						fmt.Print(err)
-					}
-
-					cD := api.CheckData{
-						Target:  ac.Target,
-						CheckID: ac.ID,
-						AgentID: ac.AgentID,
-						Result:  string(m),
-						Type:    api.CtNetinfo,
-					}
-
-					checkDataCh <- cD
-
-					// todo make configurable??
-					time.Sleep(time.Minute * 10)
-				}
-			}(d)
-			continue
-
-		// todo other checks like port scans etc.
-
-		default:
-			fmt.Println("Unknown type of check...")
-			continue
-		}
-	}
+	select {}
 }
 
 func shutdown() {

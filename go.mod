@@ -1,6 +1,6 @@
 module github.com/netwatcherio/netwatcher-agent
 
-go 1.17
+go 1.18
 
 require (
 	github.com/jackpal/gateway v1.0.7
