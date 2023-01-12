@@ -7,9 +7,10 @@ import (
 )
 
 func InitQueueWorker(dataChan chan api.CheckData, req api.ApiRequest, client api.Data) {
-	var queueData []api.CheckData
 
-	go func(ch chan api.CheckData, qD []api.CheckData, q api.ApiRequest, c api.Data) {
+	go func(ch chan api.CheckData, q api.ApiRequest, c api.Data) {
+		var qD []api.CheckData
+
 		for {
 			cD := <-ch
 			qD = append(qD, cD)
@@ -29,5 +30,5 @@ func InitQueueWorker(dataChan chan api.CheckData, req api.ApiRequest, client api
 			qD = nil
 			q.Data = nil
 		}
-	}(dataChan, queueData, req, client)
+	}(dataChan, req, client)
 }
