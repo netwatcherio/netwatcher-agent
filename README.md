@@ -2,7 +2,7 @@
 
 ## Intro
 
-Netwatcher Agent is an application that ties to the control application. It is intended to be used by MSPs and various service providers to monitor their customer sites while reporting minimally invasive data. It uses the common mtr & iperf3 library binaries. The control application will be able to be self hosted, with various control & updatability functions in the future.
+Netwatcher Agent is an application that ties to the control application. It is intended to be used by MSPs and various service providers to monitor their customer sites while reporting minimally invasive data. It uses the common mtr & rperf library binaries. The control application will be able to be self hosted, with various control & updatability functions in the future.
 
 ## Installation
 
@@ -19,11 +19,14 @@ Currently it is best to be built from source, and the latest code is not product
 ## Features *WIP*
 
 * [X]  MTR checks
-* [X]  iPerf checks
+* [X]  rPerf checks
+* [ ]  Ping Tests
 * [ ]  Real VoIP checks?
+* [ ]  nmap?
 * [X]  Network Information
 * [X]  SpeedTests
-* [ ]  All check targets grabbed on control (I guess this is more of a control WIP feature)
+* [X]  Check targets fetched from API
+* [ ]  Windows Support
 
 ## Changelog
 

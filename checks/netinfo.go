@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-type NetResult struct {
+type NetworkInfoResult struct {
 	LocalAddress     string    `json:"local_address"bson:"local_address"`
 	DefaultGateway   string    `json:"default_gateway"bson:"default_gateway"`
 	PublicAddress    string    `json:"public_address"bson:"public_address"`
@@ -17,8 +17,8 @@ type NetResult struct {
 	Timestamp        time.Time `json:"timestamp"bson:"timestamp"`
 }
 
-func CheckNet() (NetResult, error) {
-	var n NetResult
+func NetworkInfo() (NetworkInfoResult, error) {
+	var n NetworkInfoResult
 	n.Timestamp = time.Now()
 
 	user, err := speedtest.FetchUserInfo()

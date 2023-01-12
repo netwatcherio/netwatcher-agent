@@ -27,6 +27,7 @@ const (
 	CtMtr       CheckType = "MTR"
 	CtSpeedtest CheckType = "SPEEDTEST"
 	CtNetinfo   CheckType = "NETINFO"
+	CtPing      CheckType = "PING"
 )
 
 type CheckData struct {

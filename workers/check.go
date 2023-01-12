@@ -83,7 +83,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan api.CheckData) {
 			switch agentCheck.Type {
 			case api.CtMtr:
 				fmt.Println("Running mtr test for ", agentCheck.Target, "...")
-				mtr, err := checks.CheckMtr(&agentCheck, false)
+				mtr, err := checks.Mtr(&agentCheck, false)
 				if err != nil {
 					fmt.Println(err)
 				}
@@ -153,7 +153,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan api.CheckData) {
 			case "SPEEDTEST":
 				if agentCheck.Pending {
 					fmt.Println("Running speed test...")
-					speedtest, err := checks.CheckSpeedTest(&agentCheck)
+					speedtest, err := checks.SpeedTest(&agentCheck)
 					if err != nil {
 						fmt.Println(err)
 						return
@@ -180,9 +180,41 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan api.CheckData) {
 					//}
 				}
 				continue
+			case "PING":
+				fmt.Println("Running ping test for " + agentCheck.Target + "...")
+				pingC := make(chan checks.PingResult)
+				go func(ac api.AgentCheck, ch chan checks.PingResult) {
+					checks.Ping(&ac, ch)
+				}(agentCheck, pingC)
+
+				for {
+					ping := <-pingC
+
+					m, err := json.Marshal(ping)
+					if err != nil {
+						fmt.Print(err)
+					}
+
+					cD := api.CheckData{
+						Target:  agentCheck.Target,
+						CheckID: agentCheck.ID,
+						AgentID: agentCheck.AgentID,
+						Result:  string(m),
+						Type:    api.CtPing,
+					}
+
+					dC <- cD
+					break
+				}
+
+				//todo make this onyl run once, because when it uploads to the server, it will disable it,
+				//todo preventing it from being in the configuration after
+				//time.Sleep(time.Minute * 5)
+				//}
+				continue
 			case "NETINFO":
 				fmt.Println("Checking networking information...")
-				net, err := checks.CheckNet()
+				net, err := checks.NetworkInfo()
 				if err != nil {
 					fmt.Println(err)
 				}

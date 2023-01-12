@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-type SpeedTest struct {
+type SpeedTestResult struct {
 	Latency   time.Duration `json:"latency"bson:"latency"`
 	DLSpeed   float64       `json:"dl_speed"bson:"dl_speed"`
 	ULSpeed   float64       `json:"ul_speed"bson:"ul_speed"`
@@ -16,8 +16,8 @@ type SpeedTest struct {
 	Timestamp time.Time     `json:"timestamp"bson:"timestamp"`
 }
 
-func CheckSpeedTest(cd *api.AgentCheck) (SpeedTest, error) {
-	var s1 SpeedTest
+func SpeedTest(cd *api.AgentCheck) (SpeedTestResult, error) {
+	var s1 SpeedTestResult
 	user, err := speedtest.FetchUserInfo()
 	if err != nil {
 		return s1, err

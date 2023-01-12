@@ -45,8 +45,8 @@ type MtrResult struct {
 	} `json:"report"bson:"report"`
 }
 
-// CheckMtr run the check for mtr, take input from checkdata for the test, and update the mtrresult object
-func CheckMtr(cd *api.AgentCheck, triggered bool) (MtrResult, error) {
+// Mtr run the check for mtr, take input from checkdata for the test, and update the mtrresult object
+func Mtr(cd *api.AgentCheck, triggered bool) (MtrResult, error) {
 	osDetect := runtime.GOOS
 	var mtrResult MtrResult
 	mtrResult.StartTimestamp = time.Now()
