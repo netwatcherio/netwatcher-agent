@@ -52,7 +52,7 @@ func main() {
 	checkDataCh := make(chan api.CheckData)
 	agentC := make(chan []api.AgentCheck)
 
-	workers.InitQueueWorker(checkDataCh, queueReq, apiClient)
+	workers.InitQueueWorker(checkDataCh, queueReq, clientCfg)
 	workers.InitCheckWorker(agentC, checkDataCh)
 
 	var updateReceived = false
