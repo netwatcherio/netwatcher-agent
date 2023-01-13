@@ -71,6 +71,9 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan api.CheckData) {
 	go func(i primitive.ObjectID, dC chan api.CheckData) {
 		for {
 			agentCheckW, _ := checkWorkers.Load(i)
+			if agentCheckW == nil {
+				time.Sleep(5 * time.Second)
+			}
 
 			if agentCheckW.(CheckWorkerS).ToRemove {
 				checkWorkers.Delete(i)
