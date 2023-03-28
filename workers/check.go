@@ -153,7 +153,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan api.CheckData) {
 					dC <- cD
 				}
 				continue
-			case "SPEEDTEST":
+			case "SPEED":
 				if agentCheck.Pending {
 					fmt.Println("Running speed test...")
 					speedtest, err := checks.SpeedTest(&agentCheck)
