@@ -111,7 +111,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan api.CheckData) {
 				time.Sleep(time.Duration(agentCheck.Interval) * time.Minute)
 				// todo push
 				continue
-			case "RPERF":
+			case api.CtRperf:
 				// if check says its a server, start a iperf server based on the bind and port provided in target
 				//todo
 				//make this continue to run, however, make it check if the latest version of the check
@@ -153,7 +153,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan api.CheckData) {
 					dC <- cD
 				}
 				continue
-			case "SPEEDTEST":
+			case api.CtSpeedtest:
 				if agentCheck.Pending {
 					fmt.Println("Running speed test...")
 					speedtest, err := checks.SpeedTest(&agentCheck)
@@ -183,7 +183,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan api.CheckData) {
 					//}
 				}
 				continue
-			case "PING":
+			case api.CtPing:
 				fmt.Println("Running ping test for " + agentCheck.Target + "...")
 				pingC := make(chan checks.PingResult)
 				go func(ac api.AgentCheck, ch chan checks.PingResult) {
@@ -215,7 +215,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan api.CheckData) {
 				//time.Sleep(time.Minute * 5)
 				//}
 				continue
-			case "NETINFO":
+			case api.CtNetinfo:
 				fmt.Println("Checking networking information...")
 				net, err := checks.NetworkInfo()
 				if err != nil {
