@@ -33,6 +33,8 @@ type PingResult struct {
 }
 
 func Ping(ac *api.AgentCheck, pingChan chan PingResult) {
+	// todo https://github.com/prometheus-community/pro-bing
+
 	startTime := time.Now()
 
 	pinger, err := ping.NewPinger(ac.Target)
