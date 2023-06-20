@@ -2,8 +2,8 @@ package checks
 
 import (
 	"fmt"
-	"github.com/go-ping/ping"
 	"github.com/netwatcherio/netwatcher-agent/api"
+	probing "github.com/prometheus-community/pro-bing"
 	"time"
 )
 
@@ -33,11 +33,9 @@ type PingResult struct {
 }
 
 func Ping(ac *api.AgentCheck, pingChan chan PingResult) {
-	// todo https://github.com/prometheus-community/pro-bing
-
 	startTime := time.Now()
 
-	pinger, err := ping.NewPinger(ac.Target)
+	pinger, err := probing.NewPinger(ac.Target)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -49,17 +47,7 @@ func Ping(ac *api.AgentCheck, pingChan chan PingResult) {
 
 	pinger.SetPrivileged(true)
 
-	/*pinger.OnRecv = func(pkt *ping.Packet) {
-		fmt.Printf("%d bytes from %s: icmp_seq=%d time=%v\n",
-			pkt.Nbytes, pkt.IPAddr, pkt.Seq, pkt.Rtt)
-	}
-
-	pinger.OnDuplicateRecv = func(pkt *ping.Packet) {
-		fmt.Printf("%d bytes from %s: icmp_seq=%d time=%v ttl=%v (DUP!)\n",
-			pkt.Nbytes, pkt.IPAddr, pkt.Seq, pkt.Rtt, pkt.Ttl)
-	}*/
-
-	pinger.OnFinish = func(stats *ping.Statistics) {
+	pinger.OnFinish = func(stats *probing.Statistics) {
 		fmt.Printf("\n--- %s ping statistics ---\n", stats.Addr)
 		fmt.Printf("%d packets transmitted, %d packets received, %v%% packet loss\n",
 			stats.PacketsSent, stats.PacketsRecv, stats.PacketLoss)

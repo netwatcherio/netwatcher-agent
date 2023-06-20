@@ -51,6 +51,19 @@ func Mtr(cd *api.AgentCheck, triggered bool) (MtrResult, error) {
 	var mtrResult MtrResult
 	mtrResult.StartTimestamp = time.Now()
 
+	//
+
+	var cmdStr string
+	if runtime.GOARCH == "amd64" {
+		// Load your x86-specific external library here
+	} else if runtime.GOARCH == "arm64" {
+		// Load your ARM-specific external library here
+	} else {
+		fmt.Println("Unsupported architecture")
+	}
+
+	cmdStr += " " + cd.Target + " -z --show-ips -o LDRSBAWVGJMXI --json"
+
 	var cmd *exec.Cmd
 	switch osDetect {
 	case "windows":

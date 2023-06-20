@@ -247,7 +247,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan api.CheckData) {
 				fmt.Println("Unknown type of check...")
 				break
 			}
-			break
+			continue
 		}
 	}(id, dataChan)
 }

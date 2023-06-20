@@ -1,6 +1,8 @@
 package checks
 
-import "strconv"
+import (
+	"strconv"
+)
 
 func ConvHandleStrInt(str string) int {
 	atoi, err := strconv.Atoi(str)

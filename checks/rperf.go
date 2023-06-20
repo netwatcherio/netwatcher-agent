@@ -114,7 +114,6 @@ func (r *RPerfResults) Run(cd *api.AgentCheck) error {
 		args := []string{"-c", "./lib/rperf_linux64 -s -p " + targetHost[1]}
 		cmd = exec.CommandContext(context.TODO(), "/bin/bash", args...)
 		break
-		break
 	default:
 		log.Fatalf("Unknown OS")
 		panic("TODO")
