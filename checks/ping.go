@@ -40,39 +40,34 @@ func Ping(ac *api.AgentCheck, pingChan chan PingResult) {
 		fmt.Println(err)
 	}
 
-	go func() {
-		time.Sleep(60 * time.Second)
-		pinger.Stop()
-	}()
-
 	pinger.SetPrivileged(true)
 
-	pinger.OnFinish = func(stats *probing.Statistics) {
-		fmt.Printf("\n--- %s ping statistics ---\n", stats.Addr)
-		fmt.Printf("%d packets transmitted, %d packets received, %v%% packet loss\n",
-			stats.PacketsSent, stats.PacketsRecv, stats.PacketLoss)
-		fmt.Printf("round-trip min/avg/max/stddev = %v/%v/%v/%v\n",
-			stats.MinRtt, stats.AvgRtt, stats.MaxRtt, stats.StdDevRtt)
-
-		pingR := PingResult{
-			StartTimestamp:        startTime,
-			StopTimestamp:         time.Now(),
-			PacketsRecv:           stats.PacketsRecv,
-			PacketsSent:           stats.PacketsSent,
-			PacketsRecvDuplicates: stats.PacketsRecvDuplicates,
-			PacketLoss:            stats.PacketLoss,
-			Addr:                  stats.Addr,
-			MinRtt:                stats.MinRtt,
-			MaxRtt:                stats.MaxRtt,
-			AvgRtt:                stats.MinRtt,
-			StdDevRtt:             stats.StdDevRtt,
-		}
-
-		pingChan <- pingR
-	}
-
-	err = pinger.Run()
+	pinger.Count = 60
+	err = pinger.Run() // Blocks until finished.
 	if err != nil {
-		fmt.Println(err)
+		panic(err)
 	}
+	stats := pinger.Statistics() // get send/receive/duplicate/rtt stats
+
+	fmt.Printf("\n--- %s ping statistics ---\n", stats.Addr)
+	fmt.Printf("%d packets transmitted, %d packets received, %v%% packet loss\n",
+		stats.PacketsSent, stats.PacketsRecv, stats.PacketLoss)
+	fmt.Printf("round-trip min/avg/max/stddev = %v/%v/%v/%v\n",
+		stats.MinRtt, stats.AvgRtt, stats.MaxRtt, stats.StdDevRtt)
+
+	pingR := PingResult{
+		StartTimestamp:        startTime,
+		StopTimestamp:         time.Now(),
+		PacketsRecv:           stats.PacketsRecv,
+		PacketsSent:           stats.PacketsSent,
+		PacketsRecvDuplicates: stats.PacketsRecvDuplicates,
+		PacketLoss:            stats.PacketLoss,
+		Addr:                  stats.Addr,
+		MinRtt:                stats.MinRtt,
+		MaxRtt:                stats.MaxRtt,
+		AvgRtt:                stats.MinRtt,
+		StdDevRtt:             stats.StdDevRtt,
+	}
+
+	pingChan <- pingR
 }
