@@ -1,7 +1,6 @@
 package api
 
 import (
-	"errors"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -12,13 +11,6 @@ the server will respond, with the hash or an error if the pin has already been s
 
 once initialized, the id is saved and will be used for sending and receiving configuration updated
 */
-
-type ApiRequest struct {
-	PIN   string      `json:"pin,omitempty"`
-	ID    string      `json:"id,omitempty"`
-	Data  interface{} `json:"data,omitempty"`
-	Error string      `json:"error,omitempty"`
-}
 
 type CheckType string
 
@@ -52,7 +44,7 @@ type AgentCheck struct {
 	Interval  int                `json:"interval"bson:"interval"`
 }
 
-type Data struct {
+/*type Data struct {
 	Client
 }
 
@@ -84,4 +76,4 @@ func (a *Data) Push(ar *ApiRequest) error {
 	}
 
 	return nil
-}
+}*/

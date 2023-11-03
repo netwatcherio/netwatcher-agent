@@ -3,11 +3,12 @@ module github.com/netwatcherio/netwatcher-agent
 go 1.20
 
 require (
-	github.com/go-ping/ping v1.1.0
 	github.com/jackpal/gateway v1.0.7
 	github.com/joho/godotenv v1.4.0
+	github.com/kataras/iris/v12 v12.2.7
 	github.com/prometheus-community/pro-bing v0.2.0
 	github.com/showwin/speedtest-go v1.1.5
+	github.com/sirupsen/logrus v1.8.1
 	go.mongodb.org/mongo-driver v1.11.1
 	golang.org/x/sync v0.3.0
 )
@@ -30,7 +31,6 @@ require (
 	github.com/iris-contrib/schema v0.0.6 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/kataras/golog v0.1.9 // indirect
-	github.com/kataras/iris/v12 v12.2.7 // indirect
 	github.com/kataras/neffos v0.0.22 // indirect
 	github.com/kataras/pio v0.0.12 // indirect
 	github.com/klauspost/compress v1.17.0 // indirect
@@ -40,7 +40,6 @@ require (
 	github.com/nats-io/nats.go v1.28.0 // indirect
 	github.com/nats-io/nkeys v0.4.4 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
-	github.com/stretchr/testify v1.8.4 // indirect
 	github.com/tdewolff/minify/v2 v2.12.9 // indirect
 	github.com/tdewolff/parse/v2 v2.6.8 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect

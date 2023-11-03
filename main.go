@@ -1,46 +1,18 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
-	"context"
 	"fmt"
-	"github.com/kataras/iris/v12/websocket"
+	"github.com/netwatcherio/netwatcher-agent/ws"
 	"log"
 	"os"
 	"os/signal"
 	"runtime"
-	"time"
 )
-
-const (
-	endpoint              = "ws://localhost:8080/agent_ws"
-	namespace             = "default"
-	dialAndConnectTimeout = 5 * time.Second
-)
-
-// this can be shared with the server.go's.
-// `NSConn.Conn` has the `IsClient() bool` method which can be used to
-// check if that's is a client or a server-side callback.
-var clientEvents = websocket.Namespaces{
-	namespace: websocket.Events{
-		websocket.OnNamespaceConnected: func(c *websocket.NSConn, msg websocket.Message) error {
-			log.Printf("connected to namespace: %s", msg.Namespace)
-			return nil
-		},
-		websocket.OnNamespaceDisconnect: func(c *websocket.NSConn, msg websocket.Message) error {
-			log.Printf("disconnected from namespace: %s", msg.Namespace)
-			return nil
-		},
-		"chat": func(c *websocket.NSConn, msg websocket.Message) error {
-			log.Printf("%s", string(msg.Body))
-			return nil
-		},
-	},
-}
 
 func main() {
 	fmt.Printf("Starting NetWatcher Agent...\n")
+
+	loadConfig()
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
@@ -51,58 +23,14 @@ func main() {
 			return
 		}
 	}()
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(dialAndConnectTimeout))
-	defer cancel()
 
-	// WebSocket server endpoint
-	endpoint := "ws://localhost:8080/agent_ws"
+	var wsH ws.WebSocketHandler
+	wsH.InitWS(os.Getenv("HOST"), os.Getenv("HOST_WS"), os.Getenv("PIN"), os.Getenv("ID"))
 
-	// Bearer token for authentication
-	bearerToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpdGVtX2lkIjoiNjU0MTM1Y2M3YTMyOWE2NWVjY2Y4ODk1Iiwic2Vzc2lvbl9pZCI6IjY1NDQyM2Q4NjIxZWY3MzM1OWRmNDRhNCJ9.7rxo0I8Tid7oyQDBCMnPTBD7UXVQKCdahXXtwB9MTvY"
-
-	// Create a custom Gobwas dialer with headers
-	dialer := websocket.GobwasDialer(websocket.GobwasDialerOptions{Header: websocket.GobwasHeader{"Authorization": []string{"Bearer " + bearerToken}}})
-
-	client, err := websocket.Dial(ctx, dialer, endpoint, clientEvents)
-	if err != nil {
-		panic(err)
-	}
-	defer client.Close()
-
-	cc, err := client.Connect(ctx, namespace)
-	if err != nil {
-		panic(err)
-	}
-
-	cc.Emit("chat", []byte("Hello from Go client side!"))
-
-	fmt.Fprint(os.Stdout, ">> ")
-	scanner := bufio.NewScanner(os.Stdin)
-	for {
-		if !scanner.Scan() {
-			log.Printf("ERROR: %v", scanner.Err())
-			return
-		}
-
-		text := scanner.Bytes()
-
-		if bytes.Equal(text, []byte("exit")) {
-			if err := cc.Disconnect(nil); err != nil {
-				log.Printf("reply from server: %v", err)
-			}
-			break
-		}
-
-		ok := cc.Emit("chat", text)
-		if !ok {
-			break
-		}
-
-		fmt.Fprint(os.Stdout, ">> ")
-	}
+	select {}
 	// try running this program twice or/and run the server's http://localhost:8080 to check the browser client as well.
 
-	/*setup()
+	/*loadConfig()
 	clientCfg := api.ClientConfig{
 		APIHost:     os.Getenv("HOST"),
 		HTTPTimeout: 10 * time.Second,

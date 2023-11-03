@@ -29,23 +29,9 @@ type ClientConfig struct {
 // NewClientConfig constructs a ClientConfig object with the environment variables set as default
 func NewClientConfig() ClientConfig {
 	apiHost := "http://localhost:3000"
-	/*var apiUsername string
-	var apiPassword string
-
-	if os.Getenv("HOST") != "" {
-		apiHost = os.Getenv("HOST")
-	}
-	if os.Getenv("PIN") != "" {
-		apiUsername = os.Getenv("PIN")
-	}
-	if os.Getenv("ID") != "" {
-		apiPassword = os.Getenv("ID")
-	}*/
 
 	return ClientConfig{
-		APIHost: apiHost,
-		/*APIUsername: apiUsername,
-		APIPassword: apiPassword,*/
+		APIHost:     apiHost,
 		HTTPTimeout: 10 * time.Second,
 		DialTimeout: 5 * time.Second,
 		TLSTimeout:  5 * time.Second,
@@ -105,7 +91,7 @@ func (c Client) Request(method, endpoint string, data, response interface{}) err
 		req, err = http.NewRequest(method, uri, nil)
 	}
 	if err != nil {
-		return fmt.Errorf("hubspot.Client.Request(): http.NewRequest(): %v", err)
+		return fmt.Errorf("http.Request(): http.NewRequest(): %v", err)
 	}
 
 	// Headers
