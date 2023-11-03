@@ -5,7 +5,6 @@ import (
 	_ "encoding/json"
 	"fmt"
 	"github.com/netwatcherio/netwatcher-agent/api"
-	"github.com/netwatcherio/netwatcher-agent/checks"
 	_ "github.com/netwatcherio/netwatcher-agent/checks"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/sync/syncmap"
@@ -86,7 +85,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan api.CheckData) {
 			switch agentCheck.Type {
 			case api.CtMtr:
 				fmt.Println("Running mtr test for ", agentCheck.Target, "...")
-				mtr, err := checks.Mtr(&agentCheck, false)
+				mtr, err := probes.Mtr(&agentCheck, false)
 				if err != nil {
 					fmt.Println(err)
 				}
@@ -118,7 +117,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan api.CheckData) {
 				//apiClient contains it, if not, then break out of this thread
 
 				fmt.Println("Running rperf test for ", agentCheck.Target, "...")
-				rperf := checks.RPerfResults{}
+				rperf := probes.RPerfResults{}
 
 				if agentCheck.Server {
 					err := rperf.Run(&agentCheck)
@@ -156,7 +155,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan api.CheckData) {
 			case api.CtSpeedtest:
 				if agentCheck.Pending {
 					fmt.Println("Running speed test...")
-					speedtest, err := checks.SpeedTest(&agentCheck)
+					speedtest, err := probes.SpeedTest(&agentCheck)
 					if err != nil {
 						fmt.Println(err)
 						return
@@ -185,9 +184,9 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan api.CheckData) {
 				continue
 			case api.CtPing:
 				fmt.Println("Running ping test for " + agentCheck.Target + "...")
-				pingC := make(chan checks.PingResult)
-				go func(ac api.AgentCheck, ch chan checks.PingResult) {
-					checks.Ping(&ac, ch)
+				pingC := make(chan probes.PingResult)
+				go func(ac api.AgentCheck, ch chan probes.PingResult) {
+					probes.Ping(&ac, ch)
 				}(agentCheck, pingC)
 
 				for {
@@ -217,7 +216,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan api.CheckData) {
 				continue
 			case api.CtNetinfo:
 				fmt.Println("Checking networking information...")
-				net, err := checks.NetworkInfo()
+				net, err := probes.NetworkInfo()
 				if err != nil {
 					fmt.Println(err)
 				}
