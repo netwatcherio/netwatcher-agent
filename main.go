@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"time"
 )
 
 func main() {
@@ -36,6 +37,16 @@ func main() {
 		ProbeGetCh: probeGetCh,
 	}
 	wsH.InitWS()
+
+	go func(ws *ws.WebSocketHandler) {
+		for {
+			log.Info("Getting again. 1")
+			time.Sleep(10 * time.Second)
+			log.Info("Getting again. 2")
+			ws.GetConnection().Emit("probe_get", []byte("please"))
+			time.Sleep(time.Minute * 5)
+		}
+	}(wsH)
 
 	// todo input channel into wsH for inbound/outbound data to be handled
 	// if a list of probes is received, send it to the channel for inbound probes and such

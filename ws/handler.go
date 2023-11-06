@@ -28,6 +28,10 @@ type WebSocketHandler struct {
 	ProbeGetCh       chan probes.Probe
 }
 
+func (wsH *WebSocketHandler) GetConnection() *websocket.NSConn {
+	return wsH.connection
+}
+
 type EventTypeWS string
 
 type WebSocketEvent struct {
@@ -55,6 +59,8 @@ func (wsH *WebSocketHandler) InitWS() error {
 	return nil
 }
 func (wsH *WebSocketHandler) getBearerToken() (string, error) {
+
+	// todo have it reuse the token unless expired
 
 	loginC := NewClient(wsH.RestClientConfig)
 
@@ -208,7 +214,7 @@ func (wsH *WebSocketHandler) handleConnection(client *neffos.Client) {
 	wsH.connection = cc
 
 	// request initial data
-	cc.Emit("probe_get", []byte("give me probe information"))
+	wsH.GetConnection().Emit("probe_get", []byte("give me probe information"))
 }
 
 func (wsH *WebSocketHandler) connectWS(hostWS string, bearerToken string) (*neffos.Client, error) {
