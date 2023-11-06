@@ -24,14 +24,23 @@ func main() {
 		}
 	}()
 
-	var wsH ws.WebSocketHandler
+	wsH := &ws.WebSocketHandler{}
 	wsH.InitWS(os.Getenv("HOST"), os.Getenv("HOST_WS"), os.Getenv("PIN"), os.Getenv("ID"))
+
+	// so we need to, connect to the websocket, once connected, stay connected, but funnel the config pull
+	// over to where it will handle managing the runners/workers who are the ones actually running the tests
+	//
+
+	// TODO
+	// init websocket connection to backend and handle disconnects, etc.
+	// mutex/lock configuration while reconnecting to backend
+	// if backend has disconnected, write data to memory, and if continue to fail, save to raw json file
 
 	select {}
 	// try running this program twice or/and run the server's http://localhost:8080 to check the browser client as well.
 
 	/*loadConfig()
-	clientCfg := api.ClientConfig{
+	clientCfg := api.RestClientConfig{
 		APIHost:     os.Getenv("HOST"),
 		HTTPTimeout: 10 * time.Second,
 		DialTimeout: 5 * time.Second,
@@ -42,7 +51,7 @@ func main() {
 	// initialize the apiClient from api
 	// todo make this a loop that checks periodically as well as handles the errors and retries
 	apiClient := api.Data{
-		Client: client,
+		RestClientConfig: client,
 	}
 
 	apiRequest := api.ApiRequest{ID: os.Getenv("ID"), PIN: os.Getenv("PIN")}

@@ -1,4 +1,4 @@
-package api
+package ws
 
 import (
 	"bytes"
@@ -16,8 +16,8 @@ import (
 
 // originally from https://github.com/leonelquinteros/hubspot/blob/master/client.go
 
-// ClientConfig object used for client creation
-type ClientConfig struct {
+// RestClientConfig object used for client creation
+type RestClientConfig struct {
 	APIHost     string
 	APIUsername string
 	APIPassword string
@@ -26,11 +26,11 @@ type ClientConfig struct {
 	TLSTimeout  time.Duration
 }
 
-// NewClientConfig constructs a ClientConfig object with the environment variables set as default
-func NewClientConfig() ClientConfig {
+// NewClientConfig constructs a RestClientConfig object with the environment variables set as default
+func NewClientConfig() RestClientConfig {
 	apiHost := "http://localhost:3000"
 
-	return ClientConfig{
+	return RestClientConfig{
 		APIHost:     apiHost,
 		HTTPTimeout: 10 * time.Second,
 		DialTimeout: 5 * time.Second,
@@ -38,14 +38,14 @@ func NewClientConfig() ClientConfig {
 	}
 }
 
-// Client object
-type Client struct {
-	config ClientConfig
+// RestClient object
+type RestClient struct {
+	config RestClientConfig
 }
 
 // NewClient constructor
-func NewClient(config ClientConfig) Client {
-	return Client{
+func NewClient(config RestClientConfig) RestClient {
+	return RestClient{
 		config: config,
 	}
 }
@@ -56,7 +56,7 @@ func basicAuth(username, password string) string {
 }
 
 // Request executes any HubSpot API method using the current client configuration
-func (c Client) Request(method, endpoint string, data, response interface{}) error {
+func (c RestClient) Request(method, endpoint string, data, response interface{}) error {
 	// Construct endpoint URL
 	u, err := url.Parse(c.config.APIHost)
 	if err != nil {
