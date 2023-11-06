@@ -17,12 +17,15 @@ const (
 )
 
 type WebSocketHandler struct {
+	Host             string
+	Pin              string
+	ID               string
+	HostWS           string
 	Events           []*WebSocketEvent `json:"events"`
 	connection       *websocket.NSConn
 	Namespaces       *websocket.Namespaces
 	RestClientConfig RestClientConfig
-	Pin              string
-	ID               string
+	ProbeGetCh       chan probes.Probe
 }
 
 type EventTypeWS string
@@ -39,19 +42,16 @@ const (
 	eventTypeWS_AgentGet  = "agent_get"
 )
 
-func (wsH *WebSocketHandler) InitWS(host string, hostWS string, pin string, id string) error {
+func (wsH *WebSocketHandler) InitWS() error {
 	clientCfg := RestClientConfig{
-		APIHost:     host,
+		APIHost:     wsH.Host,
 		HTTPTimeout: 10 * time.Second,
 		DialTimeout: 5 * time.Second,
 		TLSTimeout:  5 * time.Second,
 	}
-
-	wsH.Pin = pin
-	wsH.ID = id
 	wsH.RestClientConfig = clientCfg
 
-	wsH.connectWithRetry(hostWS, nil)
+	wsH.connectWithRetry(nil)
 	return nil
 }
 func (wsH *WebSocketHandler) getBearerToken() (string, error) {
@@ -106,7 +106,7 @@ func (wsH *WebSocketHandler) inboundEvents() {
 		EventType: EventTypeWS(websocket.OnNamespaceDisconnect),
 		Func: func(c *websocket.NSConn, msg websocket.Message) error {
 			log.Printf("disconnected from namespace: %s", msg.Namespace)
-
+			wsH.connectWithRetry(nil)
 			//todo handle and reconnect if disconnects?
 			return nil
 		}})
@@ -117,12 +117,16 @@ func (wsH *WebSocketHandler) inboundEvents() {
 		Func: func(nsConn *websocket.NSConn, msg websocket.Message) error {
 
 			log.Printf("%s", string(msg.Body))
-			var pp []*probes.Probe
+			var pp []probes.Probe
 			err := json.Unmarshal(msg.Body, &pp)
 			if err != nil {
 				return err
 			}
 			log.Info("Loaded probes into memory...")
+			for _, pro := range pp {
+				log.Infof("Sending probe to channel for loading/processing - Type: %s, Target: %s", pro.Type, pro.Config.Target)
+				wsH.ProbeGetCh <- pro
+			}
 
 			return nil
 		},
@@ -156,7 +160,7 @@ type DataToBeSent struct {
 	// Add other fields if necessary
 }
 
-func (wsH *WebSocketHandler) connectWithRetry(hostWS string, outgoingMessages chan DataToBeSent) {
+func (wsH *WebSocketHandler) connectWithRetry(outgoingMessages chan DataToBeSent) {
 	// Define your retry strategy: initial delay, max delay, etc.
 	initialDelay := 1 * time.Second
 	maxDelay := 120 * time.Second
@@ -173,7 +177,7 @@ func (wsH *WebSocketHandler) connectWithRetry(hostWS string, outgoingMessages ch
 			continue
 		}
 
-		client, err := wsH.connectWS(hostWS, token)
+		client, err := wsH.connectWS(wsH.HostWS, token)
 		if err == nil {
 			// Connected successfully, reset delay
 			delay = initialDelay
