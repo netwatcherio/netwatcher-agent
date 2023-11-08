@@ -131,6 +131,8 @@ func (r *RPerfResults) Check(cd *Probe) error {
 	osDetect := runtime.GOOS
 	r.StartTimestamp = time.Now()
 
+	// todo make this p2p???
+
 	var cmd *exec.Cmd
 	switch osDetect {
 	case "windows":

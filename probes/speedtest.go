@@ -36,6 +36,8 @@ func SpeedTest(cd *Probe) (SpeedTestResult, error) {
 
 	mainT := targets[0]
 
+	// todo make this direct p2p connections for testing between agents??
+
 	mainT.PingTest()
 	mainT.DownloadTest(false)
 	mainT.UploadTest(false)

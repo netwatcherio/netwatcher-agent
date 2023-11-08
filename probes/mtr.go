@@ -50,7 +50,7 @@ func Mtr(cd *Probe, triggered bool) (MtrResult, error) {
 	var mtrResult MtrResult
 	mtrResult.StartTimestamp = time.Now()
 
-	//
+	//todo convert this to use trippycli??
 
 	var cmdStr string
 	if runtime.GOARCH == "amd64" {
