@@ -25,7 +25,7 @@ type WebSocketHandler struct {
 	connection       *websocket.NSConn
 	Namespaces       *websocket.Namespaces
 	RestClientConfig RestClientConfig
-	ProbeGetCh       chan probes.Probe
+	ProbeGetCh       chan []probes.Probe
 }
 
 func (wsH *WebSocketHandler) GetConnection() *websocket.NSConn {
@@ -129,10 +129,12 @@ func (wsH *WebSocketHandler) inboundEvents() {
 				return err
 			}
 			log.Info("Loaded probes into memory...")
-			for _, pro := range pp {
+
+			wsH.ProbeGetCh <- pp
+
+			/*for _, pro := range pp {
 				log.Infof("Sending probe to channel for loading/processing - Type: %s, Target: %s", pro.Type, pro.Config.Target)
-				wsH.ProbeGetCh <- pro
-			}
+			}*/
 
 			return nil
 		},

@@ -2,7 +2,6 @@ package probes
 
 import (
 	"errors"
-	"github.com/netwatcherio/netwatcher-agent/api"
 	"github.com/showwin/speedtest-go/speedtest"
 	"time"
 )
@@ -16,7 +15,7 @@ type SpeedTestResult struct {
 	Timestamp time.Time     `json:"timestamp"bson:"timestamp"`
 }
 
-func SpeedTest(cd *api.AgentCheck) (SpeedTestResult, error) {
+func SpeedTest(cd *Probe) (SpeedTestResult, error) {
 	var s1 SpeedTestResult
 	user, err := speedtest.FetchUserInfo()
 	if err != nil {

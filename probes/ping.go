@@ -2,7 +2,6 @@ package probes
 
 import (
 	"fmt"
-	"github.com/netwatcherio/netwatcher-agent/api"
 	probing "github.com/prometheus-community/pro-bing"
 	"time"
 )
@@ -32,10 +31,10 @@ type PingResult struct {
 	StdDevRtt time.Duration `json:"std_dev_rtt"bson:"std_dev_rtt"`
 }
 
-func Ping(ac *api.AgentCheck, pingChan chan PingResult) {
+func Ping(ac *Probe, pingChan chan PingResult) {
 	startTime := time.Now()
 
-	pinger, err := probing.NewPinger(ac.Target)
+	pinger, err := probing.NewPinger(ac.Config.Target)
 	if err != nil {
 		fmt.Println(err)
 	}

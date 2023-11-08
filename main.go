@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/netwatcherio/netwatcher-agent/probes"
+	"github.com/netwatcherio/netwatcher-agent/workers"
 	"github.com/netwatcherio/netwatcher-agent/ws"
 	log "github.com/sirupsen/logrus"
 	"os"
@@ -26,8 +27,9 @@ func main() {
 		}
 	}()
 
-	var probeGetCh = make(chan probes.Probe)
-	go loadWorkers(probeGetCh)
+	var probeGetCh = make(chan []probes.Probe)
+	var probeDataCh = make(chan probes.ProbeData)
+	workers.InitProbeWorker(probeGetCh, probeDataCh)
 
 	wsH := &ws.WebSocketHandler{
 		Host:       os.Getenv("HOST"),
@@ -37,14 +39,13 @@ func main() {
 		ProbeGetCh: probeGetCh,
 	}
 	wsH.InitWS()
+	workers.InitProbeDataWorker(wsH.GetConnection(), probeDataCh)
 
 	go func(ws *ws.WebSocketHandler) {
 		for {
-			log.Info("Getting again. 1")
-			time.Sleep(10 * time.Second)
-			log.Info("Getting again. 2")
+			time.Sleep(time.Minute * 1)
+			log.Info("Getting probes again...")
 			ws.GetConnection().Emit("probe_get", []byte("please"))
-			time.Sleep(time.Minute * 5)
 		}
 	}(wsH)
 
@@ -53,15 +54,6 @@ func main() {
 	// once receiving probes, have it cycle through, set the unique id for it, if a different one exists as the same ID,
 	//update/remove it, n use the new settings
 	select {}
-}
-
-func loadWorkers(pgCh <-chan probes.Probe) {
-	for data := range pgCh {
-		// Start a new goroutine for each piece of data received.
-		go func(d probes.Probe) {
-			log.Info("Loading probe: ", d.ID)
-		}(data)
-	}
 }
 
 func shutdown() {
