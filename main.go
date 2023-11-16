@@ -41,6 +41,9 @@ func main() {
 	wsH.InitWS()
 	workers.InitProbeDataWorker(wsH.GetConnection(), probeDataCh)
 
+	// todo handle if on start it isn't able to pull information from backend??
+	// eg. power goes out but network fails to come up?
+
 	go func(ws *ws.WebSocketHandler) {
 		for {
 			time.Sleep(time.Minute * 1)

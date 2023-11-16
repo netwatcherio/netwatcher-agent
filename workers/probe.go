@@ -185,7 +185,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData) {
 				}*/
 				continue
 			case probes.ProbeType_PING:
-				fmt.Println("Running ping test for " + agentCheck.Config.Target + "...")
+				fmt.Println("Running ping test for " + agentCheck.Config.Target[0].Target + "...")
 				pingC := make(chan probes.PingResult)
 				go func(ac probes.Probe, ch chan probes.PingResult) {
 					probes.Ping(&ac, ch)

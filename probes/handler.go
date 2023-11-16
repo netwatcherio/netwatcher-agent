@@ -75,12 +75,18 @@ const (
 )
 
 type ProbeConfig struct {
-	Target   string    `json:"target" bson:"target"`
-	Duration int       `json:"duration" bson:"duration"`
-	Count    int       `json:"count" bson:"count"`
-	Interval int       `json:"interval" bson:"interval"`
-	Server   bool      `bson:"server" json:"server"`
-	Pending  time.Time `json:"pending" bson:"pending"` // timestamp of when it was made pending / invalidate it after 10 minutes or so?
+	Target   []ProbeTarget `json:"target" bson:"target"`
+	Duration int           `json:"duration" bson:"duration"`
+	Count    int           `json:"count" bson:"count"`
+	Interval int           `json:"interval" bson:"interval"`
+	Server   bool          `bson:"server" json:"server"`
+	Pending  time.Time     `json:"pending" bson:"pending"` // timestamp of when it was made pending / invalidate it after 10 minutes or so?
+}
+
+type ProbeTarget struct {
+	Target string             `json:"target,omitempty" bson:"target"`
+	Agent  primitive.ObjectID `json:"agent,omitempty" bson:"agent"`
+	Group  primitive.ObjectID `json:"group,omitempty" bson:"group"`
 }
 
 type ProbeData struct {

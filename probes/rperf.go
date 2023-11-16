@@ -99,17 +99,17 @@ func (r *RPerfResults) Run(cd *Probe) error {
 	var cmd *exec.Cmd
 	switch osDetect {
 	case "windows":
-		targetHost := strings.Split(cd.Config.Target, ":")
+		targetHost := strings.Split(cd.Config.Target[0].Target, ":")
 		args := []string{"C/", "./lib/rperf_windows64 -s -p " + targetHost[1]}
 		cmd = exec.CommandContext(context.TODO(), "cmd", args...)
 		break
 	case "darwin":
-		targetHost := strings.Split(cd.Config.Target, ":")
+		targetHost := strings.Split(cd.Config.Target[0].Target, ":")
 		args := []string{"-c", "./lib/rperf_darwin -s -p " + targetHost[1]}
 		cmd = exec.CommandContext(context.TODO(), "/bin/bash", args...)
 		break
 	case "linux":
-		targetHost := strings.Split(cd.Config.Target, ":")
+		targetHost := strings.Split(cd.Config.Target[0].Target, ":")
 		args := []string{"-c", "./lib/rperf_linux64 -s -p " + targetHost[1]}
 		cmd = exec.CommandContext(context.TODO(), "/bin/bash", args...)
 		break
@@ -136,17 +136,17 @@ func (r *RPerfResults) Check(cd *Probe) error {
 	var cmd *exec.Cmd
 	switch osDetect {
 	case "windows":
-		targetHost := strings.Split(cd.Config.Target, ":")
+		targetHost := strings.Split(cd.Config.Target[0].Target, ":")
 		args := []string{"C/", "./lib/rperf_windows64 -c " + targetHost[0] + " -p " + targetHost[1] + " -b 8K -t " + strconv.Itoa(cd.Config.Duration) + " --udp -f json"}
 		cmd = exec.CommandContext(context.TODO(), "cmd", args...)
 		break
 	case "darwin":
-		targetHost := strings.Split(cd.Config.Target, ":")
+		targetHost := strings.Split(cd.Config.Target[0].Target, ":")
 		args := []string{"-c", "./lib/rperf_darwin -c " + targetHost[0] + " -p " + targetHost[1] + " -b 8K -t " + strconv.Itoa(cd.Config.Duration) + " --udp -f json"}
 		cmd = exec.CommandContext(context.TODO(), "/bin/bash", args...)
 		break
 	case "linux":
-		targetHost := strings.Split(cd.Config.Target, ":")
+		targetHost := strings.Split(cd.Config.Target[0].Target, ":")
 		args := []string{"-c", "./lib/rperf_linux64 -c " + targetHost[0] + " -p " + targetHost[1] + " -b 8K -t " + strconv.Itoa(cd.Config.Duration) + " --udp -f json"}
 		cmd = exec.CommandContext(context.TODO(), "/bin/bash", args...)
 		break

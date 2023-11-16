@@ -157,7 +157,7 @@ type Agent struct {
 	Site        primitive.ObjectID `bson:"site"json:"site"`               // _id of mongo object
 	Pin         string             `bson:"pin"json:"pin"`                 // used for registration & authentication
 	Initialized bool               `bson:"initialized"json:"initialized"` // will this be used or will we use the sessions/jwt tokens?
-	Location    float64            `bson:"location"json:"location"`       // logical/physical location
+	Location    string             `bson:"location"json:"location"`       // logical/physical location
 	CreatedAt   time.Time          `bson:"createdAt"json:"createdAt"`
 	UpdatedAt   time.Time          `bson:"updatedAt"json:"updatedAt"`
 	// pin will be used for "auth" as the password, the ID will stay the same

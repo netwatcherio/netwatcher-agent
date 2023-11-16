@@ -34,7 +34,7 @@ type PingResult struct {
 func Ping(ac *Probe, pingChan chan PingResult) {
 	startTime := time.Now()
 
-	pinger, err := probing.NewPinger(ac.Config.Target)
+	pinger, err := probing.NewPinger(ac.Config.Target[0].Target)
 	if err != nil {
 		fmt.Println(err)
 	}

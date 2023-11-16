@@ -61,23 +61,23 @@ func Mtr(cd *Probe, triggered bool) (MtrResult, error) {
 		fmt.Println("Unsupported architecture")
 	}
 
-	cmdStr += " " + cd.Config.Target + " -z --show-ips -o LDRSBAWVGJMXI --json"
+	cmdStr += " " + cd.Config.Target[0].Target + " -z --show-ips -o LDRSBAWVGJMXI --json"
 
 	var cmd *exec.Cmd
 	switch osDetect {
 	case "windows":
 		// mtr needs to be installed manually currently
-		args := []string{"/C", "./lib/mtr_windows_x86 " + cd.Config.Target + " -z --show-ips -o LDRSBAWVGJMXI --json"}
+		args := []string{"/C", "./lib/mtr_windows_x86 " + cd.Config.Target[0].Target + " -z --show-ips -o LDRSBAWVGJMXI --json"}
 		cmd = exec.CommandContext(context.TODO(), "cmd", args...)
 		break
 	case "darwin":
 		// mtr needs to be installed manually currently
-		args := []string{"-c", "./lib/mtr_darwin " + cd.Config.Target + " -z --show-ips -o LDRSBAWVGJMXI --json"}
+		args := []string{"-c", "./lib/mtr_darwin " + cd.Config.Target[0].Target + " -z --show-ips -o LDRSBAWVGJMXI --json"}
 		cmd = exec.CommandContext(context.TODO(), "/bin/bash", args...)
 		break
 	case "linux":
 		// mtr needs to be installed manually currently
-		args := []string{"-c", "mtr " + cd.Config.Target + " -z --show-ips -o LDRSBAWVGJMXI --json"}
+		args := []string{"-c", "mtr " + cd.Config.Target[0].Target + " -z --show-ips -o LDRSBAWVGJMXI --json"}
 		cmd = exec.CommandContext(context.TODO(), "/bin/bash", args...)
 		break
 	default:
