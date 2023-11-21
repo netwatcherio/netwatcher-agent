@@ -45,8 +45,8 @@ func InitProbeWorker(checkChan chan []probes.Probe, dataChan chan probes.ProbeDa
 					log.Infof("Starting worker for probe %s", ad.ID.Hex())
 					startCheckWorker(ad.ID, dataChan)
 				} else {
-					checkWorkers.Swap(ad.ID, ad)
-					log.Infof("Swapping probe with existing %s", ad.ID.Hex())
+					//checkWorkers.Swap(ad.ID, ad)
+					log.Infof("NOT Swapping probe with existing %s", ad.ID.Hex())
 				}
 
 				newIds = append(newIds, ad.ID)
@@ -97,6 +97,10 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData) {
 			switch agentCheck.Type {
 			case probes.ProbeType_SYSTEMINFO:
 				log.Info("Running system test")
+				if agentCheck.Config.Interval <= 0 {
+					agentCheck.Config.Interval = 1
+				}
+
 				mtr, err := probes.SystemInfo()
 				if err != nil {
 					fmt.Println(err)
@@ -205,20 +209,9 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData) {
 				continue
 			case probes.ProbeType_PING:
 				log.Info("Running ping test for " + agentCheck.Config.Target[0].Target + "...")
-				pingC := make(chan probes.PingResult)
-				go func(ac probes.Probe, ch chan probes.PingResult) {
-					probes.Ping(&ac, ch)
-				}(agentCheck, pingC)
-
-				for {
-					ping := <-pingC
-
-					cD := probes.ProbeData{
-						ProbeID: agentCheck.ID,
-						Data:    ping,
-					}
-
-					dC <- cD
+				err := probes.Ping(&agentCheck, dC)
+				if err != nil {
+					log.Error(err)
 					break
 				}
 

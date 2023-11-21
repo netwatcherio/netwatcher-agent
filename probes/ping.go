@@ -31,7 +31,7 @@ type PingResult struct {
 	StdDevRtt time.Duration `json:"std_dev_rtt"bson:"std_dev_rtt"`
 }
 
-func Ping(ac *Probe, pingChan chan PingResult) {
+func Ping(ac *Probe, pingChan chan ProbeData) error {
 	startTime := time.Now()
 
 	pinger, err := probing.NewPinger(ac.Config.Target[0].Target)
@@ -44,7 +44,7 @@ func Ping(ac *Probe, pingChan chan PingResult) {
 	pinger.Count = 60
 	err = pinger.Run() // Blocks until finished.
 	if err != nil {
-		panic(err)
+		return err
 	}
 	stats := pinger.Statistics() // get send/receive/duplicate/rtt stats
 
@@ -68,5 +68,12 @@ func Ping(ac *Probe, pingChan chan PingResult) {
 		StdDevRtt:             stats.StdDevRtt,
 	}
 
-	pingChan <- pingR
+	cD := ProbeData{
+		ProbeID: ac.ID,
+		Data:    pingR,
+	}
+
+	pingChan <- cD
+
+	return nil
 }
