@@ -95,8 +95,27 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData) {
 			agentCheck := agentCheckW.(ProbeWorkerS).Probe
 
 			switch agentCheck.Type {
+			case probes.ProbeType_SYSTEMINFO:
+				log.Info("Running system test")
+				mtr, err := probes.SystemInfo()
+				if err != nil {
+					fmt.Println(err)
+				}
+
+				cD := probes.ProbeData{
+					ProbeID: agentCheck.ID,
+					Data:    mtr,
+				}
+
+				fmt.Println("Sending apiClient to the channel (Sysinfo) for ", agentCheck.Config.Interval, "...")
+				dC <- cD
+				fmt.Println("sleeping for " + strconv.Itoa(agentCheck.Config.Interval) + " minutes")
+				time.Sleep(time.Duration(agentCheck.Config.Interval) * time.Minute)
+				// todo push
+				continue
+
 			case probes.ProbeType_MTR:
-				fmt.Println("Running mtr test for ", agentCheck.Config.Target, "...")
+				log.Info("Running mtr test for ", agentCheck.Config.Target, "...")
 				mtr, err := probes.Mtr(&agentCheck, false)
 				if err != nil {
 					fmt.Println(err)
@@ -185,7 +204,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData) {
 				}*/
 				continue
 			case probes.ProbeType_PING:
-				fmt.Println("Running ping test for " + agentCheck.Config.Target[0].Target + "...")
+				log.Info("Running ping test for " + agentCheck.Config.Target[0].Target + "...")
 				pingC := make(chan probes.PingResult)
 				go func(ac probes.Probe, ch chan probes.PingResult) {
 					probes.Ping(&ac, ch)

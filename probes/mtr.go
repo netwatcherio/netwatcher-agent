@@ -63,29 +63,35 @@ func Mtr(cd *Probe, triggered bool) (MtrResult, error) {
 
 	cmdStr += " " + cd.Config.Target[0].Target + " -z --show-ips -o LDRSBAWVGJMXI --json"
 
+	ctx := context.Background()
+
 	var cmd *exec.Cmd
 	switch osDetect {
 	case "windows":
 		// mtr needs to be installed manually currently
 		args := []string{"/C", "./lib/mtr_windows_x86 " + cd.Config.Target[0].Target + " -z --show-ips -o LDRSBAWVGJMXI --json"}
-		cmd = exec.CommandContext(context.TODO(), "cmd", args...)
+		cmd = exec.CommandContext(ctx, "cmd", args...)
 		break
 	case "darwin":
 		// mtr needs to be installed manually currently
 		args := []string{"-c", "./lib/mtr_darwin " + cd.Config.Target[0].Target + " -z --show-ips -o LDRSBAWVGJMXI --json"}
-		cmd = exec.CommandContext(context.TODO(), "/bin/bash", args...)
+		cmd = exec.CommandContext(ctx, "/bin/bash", args...)
 		break
 	case "linux":
 		// mtr needs to be installed manually currently
 		args := []string{"-c", "mtr " + cd.Config.Target[0].Target + " -z --show-ips -o LDRSBAWVGJMXI --json"}
-		cmd = exec.CommandContext(context.TODO(), "/bin/bash", args...)
+		cmd = exec.CommandContext(ctx, "/bin/bash", args...)
 		break
 	default:
 		log.Fatalf("Unknown OS")
 	}
 
+	var cancel context.CancelFunc
+	// timeout after 60 seconds
+	ctx, cancel = context.WithTimeout(context.Background(), time.Duration(60)*time.Second)
+	defer cancel()
+
 	output, err := cmd.Output()
-	/*fmt.Printf("%s\n", output)*/
 	if err != nil {
 		return mtrResult, err
 	}
@@ -94,6 +100,7 @@ func Mtr(cd *Probe, triggered bool) (MtrResult, error) {
 	if err != nil {
 		return mtrResult, err
 	}
+
 	/*r.StopTimestamp = time.Now()*/
 	mtrResult.StopTimestamp = time.Now()
 	mtrResult.Triggered = triggered

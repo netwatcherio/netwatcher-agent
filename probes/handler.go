@@ -14,6 +14,7 @@ type Probe struct {
 	UpdatedAt     time.Time          `bson:"updatedAt"json:"updatedAt"`
 	Notifications bool               `json:"notifications"bson:"notifications"` // notifications will be emailed to anyone who has permissions on their account / associated with the site
 	Config        ProbeConfig        `bson:"config"json:"config"`
+	ProbeProcess  int
 }
 
 func (pd *ProbeData) parse(probe *Probe) (interface{}, error) {
@@ -72,6 +73,7 @@ const (
 	ProbeType_PING        ProbeType = "PING"
 	ProbeType_SPEEDTEST   ProbeType = "SPEEDTEST"
 	ProbeType_NETWORKINFO ProbeType = "NETINFO"
+	ProbeType_SYSTEMINFO  ProbeType = "SYSINFO"
 )
 
 type ProbeConfig struct {
