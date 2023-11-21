@@ -10,12 +10,12 @@ import (
 
 const (
 	configFile    = "./config.conf"
-	defaultConfig = "HOST=*PUT URL HERE*\nPIN=*PUT PIN HERE*\nID=\n"
+	defaultConfig = "HOST=http://localhost:8080\nHOST_WS=ws://localhost:8080/agent_ws\nPIN=*PUT PIN HERE*\nID=*PUT AGENT ID HERE*\n"
 )
 
 const VERSION = "0.1.0rc1"
 
-func setup() error {
+func loadConfig() error {
 	fmt.Printf("NetWatcher v%s - Copyright (c) 2021-%d Shaun Agostinho\n", VERSION, time.Now().Year())
 	// Check if the config file exists in the local directory
 	_, err := os.Stat(configFile)
@@ -29,7 +29,7 @@ func setup() error {
 			return err
 		}
 		// Attempt to write the default config pattern to the config file
-		err = os.WriteFile("./config.conf", []byte(defaultConfig), 0644)
+		err = os.WriteFile(configFile, []byte(defaultConfig), 0644)
 		if err != nil {
 			return err
 		}
@@ -40,10 +40,10 @@ func setup() error {
 	if os.Getenv("ENVIRONMENT") == "PRODUCTION" {
 		fmt.Printf("Running in PRODUCTION mode.\n")
 	} else {
-		fmt.Printf("Running in %sDEVELOPMENT%s mode.", "\u001B[1;33m", "\033[m\n")
+		fmt.Printf("Running in DEVELOPMENT mode.\n" /*"\u001B[1;33m", "\033[m\n"*/)
 	}
 	// Attempt to load the config file
-	err = godotenv.Load("config.conf")
+	err = godotenv.Load(configFile)
 	if err != nil {
 		return err
 	}
