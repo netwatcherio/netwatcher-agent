@@ -6,7 +6,7 @@ require (
 	github.com/jackpal/gateway v1.0.7
 	github.com/joho/godotenv v1.4.0
 	github.com/kataras/iris/v12 v12.2.7
-	github.com/prometheus-community/pro-bing v0.2.0
+	github.com/prometheus-community/pro-bing v0.3.0
 	github.com/showwin/speedtest-go v1.1.5
 	github.com/sirupsen/logrus v1.8.1
 	go.mongodb.org/mongo-driver v1.11.1
