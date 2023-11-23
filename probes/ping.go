@@ -3,6 +3,7 @@ package probes
 import (
 	"fmt"
 	probing "github.com/prometheus-community/pro-bing"
+	log "github.com/sirupsen/logrus"
 	"time"
 )
 
@@ -39,8 +40,7 @@ func Ping(ac *Probe, pingChan chan ProbeData) error {
 		fmt.Println(err)
 	}
 
-	pinger.Count = 10
-	pinger.Timeout = 25 * time.Second
+	pinger.Timeout = 30 * time.Second
 
 	pinger.OnFinish = func(stats *probing.Statistics) {
 
@@ -66,15 +66,10 @@ func Ping(ac *Probe, pingChan chan ProbeData) error {
 		pingChan <- cD
 	}
 
-	for i := 0; i < ac.Config.Duration; i++ {
-
-		err = pinger.Run() // Blocks until finished.
-		if err != nil {
-			return err
-		}
-
-		time.Sleep(1 * time.Second)
-
+	err = pinger.Run() // Blocks until finished.
+	if err != nil {
+		log.Error(err)
+		return err
 	}
 
 	//stats := pinger.Statistics() // get send/receive/duplicate/rtt stats
