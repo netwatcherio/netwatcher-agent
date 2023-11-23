@@ -1,0 +1,27 @@
+stages:
+  - build
+
+build_windows:
+  stage: build
+  image: golang:latest # Use the latest Go image
+  before_script:
+    - apt-get update -y && apt-get install -y wine
+    - winecfg # Required to configure Wine
+  script:
+    - 'echo "Setting up the cross-compilation environment..."'
+    - 'export GOOS=windows GOARCH=amd64'
+
+    - 'echo "Building the project..."'
+    - 'go build -o app.exe main.go'
+
+    - 'echo "Building WiX installer for Windows..."'
+    - 'wine candle.exe -arch x64 wix/product.wxs -o product.wixobj' # Adjust as needed
+    - 'wine light.exe product.wixobj -o product.msi'
+
+  artifacts:
+    paths:
+      - './*.msi'
+    expire_in: 1 week
+
+  only:
+    - master
