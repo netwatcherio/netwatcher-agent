@@ -40,7 +40,7 @@ func Ping(ac *Probe, pingChan chan ProbeData) error {
 	}
 
 	pinger.Count = 10
-	pinger.Timeout = 5 * time.Second
+	pinger.Timeout = 15 * time.Second
 
 	pinger.OnFinish = func(stats *probing.Statistics) {
 
