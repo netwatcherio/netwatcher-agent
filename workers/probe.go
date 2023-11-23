@@ -212,7 +212,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData) {
 				err := probes.Ping(&agentCheck, dC)
 				if err != nil {
 					log.Error(err)
-					break
+					//break
 				}
 
 				//todo make this onyl run once, because when it uploads to the server, it will disable it,
