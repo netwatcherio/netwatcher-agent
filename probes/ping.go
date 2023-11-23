@@ -39,7 +39,8 @@ func Ping(ac *Probe, pingChan chan ProbeData) error {
 		fmt.Println(err)
 	}
 
-	pinger.SetPrivileged(true)
+	pinger.Count = 2
+	pinger.Timeout = 4 * time.Second
 
 	pinger.OnFinish = func(stats *probing.Statistics) {
 
@@ -65,10 +66,15 @@ func Ping(ac *Probe, pingChan chan ProbeData) error {
 		pingChan <- cD
 	}
 
-	pinger.Count = 60
-	err = pinger.Run() // Blocks until finished.
-	if err != nil {
-		return err
+	for i := 0; i < ac.Config.Duration; i++ {
+
+		err = pinger.Run() // Blocks until finished.
+		if err != nil {
+			return err
+		}
+
+		time.Sleep(1 * time.Second)
+
 	}
 
 	//stats := pinger.Statistics() // get send/receive/duplicate/rtt stats
