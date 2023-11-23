@@ -41,10 +41,10 @@ func Ping(ac *Probe, pingChan chan ProbeData) error {
 		fmt.Println(err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(2*ac.Config.Duration)*time.Second)
 	defer cancel()
 
-	pinger.Timeout = 30 * time.Second
+	pinger.Count = ac.Config.Duration
 
 	pinger.OnFinish = func(stats *probing.Statistics) {
 
