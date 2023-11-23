@@ -2,8 +2,6 @@ module github.com/netwatcherio/netwatcher-agent
 
 go 1.21
 
-toolchain go1.21.3
-
 require (
 	github.com/elastic/go-sysinfo v1.11.1
 	github.com/jackpal/gateway v1.0.13
