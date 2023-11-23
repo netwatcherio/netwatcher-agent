@@ -1,6 +1,7 @@
 package probes
 
 import (
+	"context"
 	"fmt"
 	probing "github.com/prometheus-community/pro-bing"
 	log "github.com/sirupsen/logrus"
@@ -40,6 +41,9 @@ func Ping(ac *Probe, pingChan chan ProbeData) error {
 		fmt.Println(err)
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
 	pinger.Timeout = 30 * time.Second
 
 	pinger.OnFinish = func(stats *probing.Statistics) {
@@ -66,7 +70,7 @@ func Ping(ac *Probe, pingChan chan ProbeData) error {
 		pingChan <- cD
 	}
 
-	err = pinger.Run() // Blocks until finished.
+	err = pinger.RunWithContext(ctx) // Blocks until finished.
 	if err != nil {
 		log.Error(err)
 		return err
