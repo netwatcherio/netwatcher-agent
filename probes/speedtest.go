@@ -1,8 +1,6 @@
 package probes
 
 import (
-	"errors"
-	"github.com/showwin/speedtest-go/speedtest"
 	"time"
 )
 
@@ -17,11 +15,11 @@ type SpeedTestResult struct {
 
 func SpeedTest(cd *Probe) (SpeedTestResult, error) {
 	var s1 SpeedTestResult
-	user, err := speedtest.FetchUserInfo()
-	if err != nil {
+	//user, err := speedtest.FetchUserInfo()
+	/*if err != nil {
 		return s1, err
-	}
-	serverList, err := speedtest.FetchServers(user)
+	}*/
+	/*serverList, err := speedtest.FetchServers(user)
 	if err != nil {
 		return s1, err
 	}
@@ -38,8 +36,14 @@ func SpeedTest(cd *Probe) (SpeedTestResult, error) {
 
 	// todo make this direct p2p connections for testing between agents??
 
-	mainT.PingTest()
-	mainT.DownloadTest(false)
+	err := mainT.PingTest()
+	if err != nil {
+		return SpeedTestResult{}, err
+	}
+	err := mainT.DownloadTest(false)
+	if err != nil {
+		return SpeedTestResult{}, err
+	}
 	mainT.UploadTest(false)
 
 	s1.Latency = mainT.Latency
@@ -47,7 +51,7 @@ func SpeedTest(cd *Probe) (SpeedTestResult, error) {
 	s1.ULSpeed = mainT.ULSpeed
 	s1.Server = mainT.Name
 	s1.Host = mainT.Host
-	s1.Timestamp = time.Now()
+	s1.Timestamp = time.Now()*/
 
 	return s1, nil
 }
