@@ -157,7 +157,6 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData) {
 						fmt.Println(err)
 						fmt.Println("exiting loop, please check firewall, and recreate check, you may need to reboot")
 						time.Sleep(time.Second * 30)
-						break
 					}
 				} else {
 					err := rperf.Check(&agentCheck)
