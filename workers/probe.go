@@ -2,6 +2,7 @@ package workers
 
 import (
 	_ "encoding/json"
+	"errors"
 	"fmt"
 	"github.com/netwatcherio/netwatcher-agent/probes"
 	log "github.com/sirupsen/logrus"
@@ -19,6 +20,37 @@ type ProbeWorkerS struct {
 }
 
 var checkWorkers syncmap.Map
+
+func findMatchingMTRProbe(probe probes.Probe) (probes.Probe, error) {
+	var foundProbe probes.Probe
+	found := false
+
+	checkWorkers.Range(func(key, value interface{}) bool {
+		probeWorker, ok := value.(ProbeWorkerS)
+		if !ok {
+			// Handle the case where the type assertion fails
+			return true // continue iterating
+		}
+
+		if probeWorker.Probe.Type == probes.ProbeType_MTR {
+			for _, target := range probeWorker.Probe.Config.Target {
+				for _, givenTarget := range probe.Config.Target {
+					if target.Target == givenTarget.Target {
+						foundProbe = probeWorker.Probe
+						found = true
+						return false // stop iterating
+					}
+				}
+			}
+		}
+		return true // continue iterating
+	})
+
+	if !found {
+		return probes.Probe{}, errors.New("no matching probe found")
+	}
+	return foundProbe, nil
+}
 
 func InitProbeWorker(checkChan chan []probes.Probe, dataChan chan probes.ProbeData) {
 	go func(aC chan []probes.Probe, dC chan probes.ProbeData) {
@@ -208,7 +240,14 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData) {
 				continue
 			case probes.ProbeType_PING:
 				log.Info("Running ping test for " + agentCheck.Config.Target[0].Target + "...")
-				err := probes.Ping(&agentCheck, dC)
+
+				// todo find target that matches ping host for target field, and run mtr against it
+				probe, err := findMatchingMTRProbe(agentCheck)
+				if err != nil {
+					return
+				}
+
+				err = probes.Ping(&agentCheck, dC, probe)
 				if err != nil {
 					log.Error(err)
 					//break

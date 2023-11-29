@@ -33,7 +33,7 @@ type PingResult struct {
 	StdDevRtt time.Duration `json:"std_dev_rtt"bson:"std_dev_rtt"`
 }
 
-func Ping(ac *Probe, pingChan chan ProbeData) error {
+func Ping(ac *Probe, pingChan chan ProbeData, mtrProbe Probe) error {
 	startTime := time.Now()
 
 	pinger, err := probing.NewPinger(ac.Config.Target[0].Target)
@@ -45,7 +45,7 @@ func Ping(ac *Probe, pingChan chan ProbeData) error {
 	defer cancel()
 
 	pinger.Count = ac.Config.Duration
-	pinger.SetPrivileged(true)
+	pinger.SetPrivileged(false)
 
 	pinger.OnFinish = func(stats *probing.Statistics) {
 
@@ -69,6 +69,27 @@ func Ping(ac *Probe, pingChan chan ProbeData) error {
 		}
 
 		pingChan <- cD
+
+		if pingR.PacketLoss > 2 {
+			mtr, err := Mtr(&mtrProbe, false)
+			if err != nil {
+				fmt.Println(err)
+			}
+
+			/*m, err := json.Marshal(mtr)
+			if err != nil {
+				fmt.Print(err)
+			}*/
+
+			dC := ProbeData{
+				ProbeID:   mtrProbe.ID,
+				Triggered: true,
+				Data:      mtr,
+			}
+
+			fmt.Println("Triggered MTR for ", mtrProbe.Config.Target[0].Target, "...")
+			pingChan <- dC
+		}
 	}
 
 	err = pinger.RunWithContext(ctx) // Blocks until finished.
