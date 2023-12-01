@@ -39,7 +39,7 @@ func main() {
 		ProbeGetCh: probeGetCh,
 	}
 	wsH.InitWS()
-	workers.InitProbeDataWorker(wsH.GetConnection(), probeDataCh)
+	workers.InitProbeDataWorker(wsH, probeDataCh)
 
 	// todo handle if on start it isn't able to pull information from backend??
 	// eg. power goes out but network fails to come up?
