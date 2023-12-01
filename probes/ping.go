@@ -45,7 +45,7 @@ func Ping(ac *Probe, pingChan chan ProbeData, mtrProbe Probe) error {
 	defer cancel()
 
 	pinger.Count = ac.Config.Duration
-	pinger.SetPrivileged(false)
+	pinger.SetPrivileged(true)
 
 	pinger.OnFinish = func(stats *probing.Statistics) {
 

@@ -41,7 +41,6 @@ func NetworkInfo() (NetworkInfoResult, error) {
 	if err != nil {
 		return n, errors.New("could not discover local interface address")
 	}
-
 	n.LocalAddress = localInterface.String()
 
 	return n, nil

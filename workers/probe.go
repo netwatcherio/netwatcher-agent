@@ -244,7 +244,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData) {
 				// todo find target that matches ping host for target field, and run mtr against it
 				probe, err := findMatchingMTRProbe(agentCheck)
 				if err != nil {
-					return
+					log.Error(err)
 				}
 
 				err = probes.Ping(&agentCheck, dC, probe)
