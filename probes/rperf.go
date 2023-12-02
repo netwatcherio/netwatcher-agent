@@ -35,7 +35,7 @@ type RPerfResults struct {
 			SendInterval float64 `json:"send_interval"bson:"send_interval"`
 		} `json:"upload"bson:"upload"`
 	} `json:"config"bson:"config"`
-	Streams []struct {
+	/*Streams []struct {
 		Abandoned bool `json:"abandoned"bson:"abandoned"`
 		Failed    bool `json:"failed"bson:"failed"`
 		Intervals struct {
@@ -72,7 +72,7 @@ type RPerfResults struct {
 				PacketsSent              int     `json:"packets_sent"bson:"packets_sent"`
 			} `json:"summary"bson:"summary"`
 		} `json:"intervals"bson:"intervals"`
-	} `json:"streams"bson:"streams"`
+	} `json:"streams"bson:"streams"`*/
 	Success bool `json:"success"bson:"success"`
 	Summary struct {
 		BytesReceived            int     `json:"bytes_received"bson:"bytes_received"`
@@ -137,7 +137,7 @@ func (r *RPerfResults) Check(cd *Probe) error {
 	switch osDetect {
 	case "windows":
 		targetHost := strings.Split(cd.Config.Target[0].Target, ":")
-		args := []string{"C/", "./lib/rperf_windows64 -c " + targetHost[0] + " -p " + targetHost[1] + " -b 8K -t " + strconv.Itoa(cd.Config.Duration) + " --udp -f json"}
+		args := []string{"C/", "./lib/rperf_windows.exe -c " + targetHost[0] + " -p " + targetHost[1] + " -b 8K -t " + strconv.Itoa(cd.Config.Duration) + " --udp -f json"}
 		cmd = exec.CommandContext(context.TODO(), "cmd", args...)
 		break
 	case "darwin":

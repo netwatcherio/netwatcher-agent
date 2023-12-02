@@ -152,7 +152,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData) {
 
 			case probes.ProbeType_MTR:
 				log.Info("Running mtr test for ", agentCheck.Config.Target, "...")
-				mtr, err := probes.Mtr(&agentCheck, false)
+				mtr, err := probes.Mtr(&agentCheck)
 				if err != nil {
 					fmt.Println(err)
 				}
@@ -164,7 +164,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData) {
 
 				cD := probes.ProbeData{
 					ProbeID:   agentCheck.ID,
-					Triggered: mtr.Triggered,
+					Triggered: false,
 					Data:      mtr,
 				}
 

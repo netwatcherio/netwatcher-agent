@@ -5,6 +5,7 @@ import (
 	"fmt"
 	probing "github.com/prometheus-community/pro-bing"
 	log "github.com/sirupsen/logrus"
+	"runtime"
 	"time"
 )
 
@@ -44,6 +45,23 @@ func Ping(ac *Probe, pingChan chan ProbeData, mtrProbe Probe) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(2*ac.Config.Duration)*time.Second)
 	defer cancel()
 
+	osDetect := runtime.GOOS
+
+	switch osDetect {
+	case "windows":
+		pinger.SetPrivileged(true)
+		break
+	case "darwin":
+		pinger.SetPrivileged(true)
+		break
+	case "linux":
+		pinger.SetPrivileged(true)
+		break
+	default:
+		log.Fatalf("Unknown OS")
+		panic("TODO")
+	}
+
 	pinger.Count = ac.Config.Duration
 	pinger.SetPrivileged(false)
 
@@ -72,7 +90,7 @@ func Ping(ac *Probe, pingChan chan ProbeData, mtrProbe Probe) error {
 
 		// todo configurable threshold
 		if pingR.PacketLoss > 2 {
-			mtr, err := Mtr(&mtrProbe, false)
+			mtr, err := Mtr(&mtrProbe)
 			if err != nil {
 				fmt.Println(err)
 			}

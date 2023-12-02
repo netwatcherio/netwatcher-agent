@@ -13,6 +13,35 @@ import (
 type MtrResult struct {
 	StartTimestamp time.Time `json:"start_timestamp"bson:"start_timestamp"`
 	StopTimestamp  time.Time `json:"stop_timestamp"bson:"stop_timestamp"`
+	Report         struct {
+		Info struct {
+			Target struct {
+				IP       string `json:"ip"`
+				Hostname string `json:"hostname"`
+			} `json:"target"`
+		} `json:"info"`
+		Hops []struct {
+			TTL   int `json:"ttl"`
+			Hosts []struct {
+				IP       string `json:"ip"`
+				Hostname string `json:"hostname"`
+			} `json:"hosts"`
+			Extensions []string `json:"extensions"`
+			LossPct    string   `json:"loss_pct"`
+			Sent       int      `json:"sent"`
+			Last       string   `json:"last"`
+			Recv       int      `json:"recv"`
+			Avg        string   `json:"avg"`
+			Best       string   `json:"best"`
+			Worst      string   `json:"worst"`
+			StdDev     string   `json:"stddev"`
+		} `json:"hops"`
+	} `json:"report"bson:"report"`
+}
+
+/*type MtrResult struct {
+	StartTimestamp time.Time `json:"start_timestamp"bson:"start_timestamp"`
+	StopTimestamp  time.Time `json:"stop_timestamp"bson:"stop_timestamp"`
 	Triggered      bool      `bson:"triggered"json:"triggered"`
 	Report         struct {
 		Mtr struct {
@@ -42,10 +71,10 @@ type MtrResult struct {
 			Jint  float64     `json:"Jint"bson:"Jint"`
 		} `json:"hubs"bson:"hubs"`
 	} `json:"report"bson:"report"`
-}
+}*/
 
 // Mtr run the check for mtr, take input from checkdata for the test, and update the mtrresult object
-func Mtr(cd *Probe, triggered bool) (MtrResult, error) {
+func Mtr(cd *Probe) (MtrResult, error) {
 	osDetect := runtime.GOOS
 	var mtrResult MtrResult
 	mtrResult.StartTimestamp = time.Now()
@@ -58,7 +87,7 @@ func Mtr(cd *Probe, triggered bool) (MtrResult, error) {
 	} else if runtime.GOARCH == "arm64" {
 		// Load your ARM-specific external library here
 	} else {
-		fmt.Println("Unsupported architecture")
+		fmt.Println("Unsupported architecture for MTR test")
 	}
 
 	cmdStr += " " + cd.Config.Target[0].Target + " -z --show-ips -o LDRSBAWVGJMXI --json"
@@ -69,17 +98,23 @@ func Mtr(cd *Probe, triggered bool) (MtrResult, error) {
 	switch osDetect {
 	case "windows":
 		// mtr needs to be installed manually currently
-		args := []string{"/C", "./lib/mtr_windows_x86 " + cd.Config.Target[0].Target + " -z --show-ips -o LDRSBAWVGJMXI --json"}
+		/*args := []string{"/C", "./lib/mtr_windows_x86 " + cd.Config.Target[0].Target + " -z --show-ips -o LDRSBAWVGJMXI --json"}
+		cmd = exec.CommandContext(ctx, "cmd", args...)*/
+		args := []string{"/C", "./lib/trip.exe --udp --mode json --multipath-strategy paris --dns-resolve-method cloudflare --report-cycles 5 --dns-lookup-as-info " + cd.Config.Target[0].Target}
 		cmd = exec.CommandContext(ctx, "cmd", args...)
 		break
 	case "darwin":
 		// mtr needs to be installed manually currently
-		args := []string{"-c", "./lib/mtr_darwin " + cd.Config.Target[0].Target + " -z --show-ips -o LDRSBAWVGJMXI --json"}
+		/*args := []string{"-c", "./lib/mtr_darwin " + cd.Config.Target[0].Target + " -z --show-ips -o LDRSBAWVGJMXI --json"}
+		cmd = exec.CommandContext(ctx, "/bin/bash", args...)*/
+		args := []string{"/C", "./lib/trip_darwin --udp --mode json --multipath-strategy paris --dns-resolve-method cloudflare --report-cycles 5 --dns-lookup-as-info " + cd.Config.Target[0].Target}
 		cmd = exec.CommandContext(ctx, "/bin/bash", args...)
 		break
 	case "linux":
 		// mtr needs to be installed manually currently
-		args := []string{"-c", "mtr " + cd.Config.Target[0].Target + " -z --show-ips -o LDRSBAWVGJMXI --json"}
+		/*args := []string{"-c", "mtr " + cd.Config.Target[0].Target + " -z --show-ips -o LDRSBAWVGJMXI --json"}
+		cmd = exec.CommandContext(ctx, "/bin/bash", args...)*/
+		args := []string{"/C", "./lib/trip_linux --udp --mode json --multipath-strategy paris --dns-resolve-method cloudflare --report-cycles 5 --dns-lookup-as-info " + cd.Config.Target[0].Target}
 		cmd = exec.CommandContext(ctx, "/bin/bash", args...)
 		break
 	default:
@@ -103,7 +138,6 @@ func Mtr(cd *Probe, triggered bool) (MtrResult, error) {
 
 	/*r.StopTimestamp = time.Now()*/
 	mtrResult.StopTimestamp = time.Now()
-	mtrResult.Triggered = triggered
 
 	return mtrResult, nil
 }
