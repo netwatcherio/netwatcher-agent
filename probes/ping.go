@@ -2,6 +2,7 @@ package probes
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	probing "github.com/prometheus-community/pro-bing"
 	log "github.com/sirupsen/logrus"
@@ -63,7 +64,12 @@ func Ping(ac *Probe, pingChan chan ProbeData, mtrProbe Probe) error {
 	}
 
 	pinger.Count = ac.Config.Duration
-	pinger.SetPrivileged(false)
+	pinger.SetPrivileged(true)
+
+	/*pinger.OnRecv = func(pkt *probing.Packet) {
+		fmt.Printf("%d bytes from %s: icmp_seq=%d time=%v\n",
+			pkt.Nbytes, pkt.IPAddr, pkt.Seq, pkt.Rtt)
+	}*/
 
 	pinger.OnFinish = func(stats *probing.Statistics) {
 
@@ -75,11 +81,24 @@ func Ping(ac *Probe, pingChan chan ProbeData, mtrProbe Probe) error {
 			PacketsRecvDuplicates: stats.PacketsRecvDuplicates,
 			PacketLoss:            stats.PacketLoss,
 			Addr:                  stats.Addr,
-			MinRtt:                stats.MinRtt,
-			MaxRtt:                stats.MaxRtt,
-			AvgRtt:                stats.MinRtt,
-			StdDevRtt:             stats.StdDevRtt,
+			MinRtt:                time.Duration(stats.MinRtt.Nanoseconds()),
+			MaxRtt:                time.Duration(stats.MaxRtt.Nanoseconds()),
+			AvgRtt:                time.Duration(stats.AvgRtt.Nanoseconds()),
+			StdDevRtt:             time.Duration(stats.StdDevRtt.Nanoseconds()),
 		}
+
+		/*fmt.Printf("\n--- %s ping statistics ---\n", stats.Addr)
+		fmt.Printf("%d packets transmitted, %d packets received, %v%% packet loss\n",
+			stats.PacketsSent, stats.PacketsRecv, stats.PacketLoss)
+		fmt.Printf("round-trip min/avg/max/stddev = %v/%v/%v/%v\n",
+			stats.MinRtt, stats.AvgRtt, stats.MaxRtt, stats.StdDevRtt)*/
+
+		marshal, err := json.Marshal(pingR)
+		if err != nil {
+			//return
+		}
+
+		log.Info(string(marshal))
 
 		cD := ProbeData{
 			ProbeID: ac.ID,
