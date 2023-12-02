@@ -100,21 +100,21 @@ func Mtr(cd *Probe) (MtrResult, error) {
 		// mtr needs to be installed manually currently
 		/*args := []string{"/C", "./lib/mtr_windows_x86 " + cd.Config.Target[0].Target + " -z --show-ips -o LDRSBAWVGJMXI --json"}
 		cmd = exec.CommandContext(ctx, "cmd", args...)*/
-		args := []string{"/C", "./lib/trip.exe --udp --mode json --multipath-strategy paris --dns-resolve-method cloudflare --report-cycles 5 --dns-lookup-as-info " + cd.Config.Target[0].Target}
+		args := []string{"/C", "./lib/trip.exe --icmp --mode json --multipath-strategy paris --dns-resolve-method cloudflare --report-cycles 5 --dns-lookup-as-info " + cd.Config.Target[0].Target}
 		cmd = exec.CommandContext(ctx, "cmd", args...)
 		break
 	case "darwin":
 		// mtr needs to be installed manually currently
 		/*args := []string{"-c", "./lib/mtr_darwin " + cd.Config.Target[0].Target + " -z --show-ips -o LDRSBAWVGJMXI --json"}
 		cmd = exec.CommandContext(ctx, "/bin/bash", args...)*/
-		args := []string{"/C", "./lib/trip_darwin --udp --mode json --multipath-strategy paris --dns-resolve-method cloudflare --report-cycles 5 --dns-lookup-as-info " + cd.Config.Target[0].Target}
+		args := []string{"-c", "./lib/trip_darwin --icmp --mode json --multipath-strategy paris --dns-resolve-method cloudflare --report-cycles 5 --dns-lookup-as-info " + cd.Config.Target[0].Target}
 		cmd = exec.CommandContext(ctx, "/bin/bash", args...)
 		break
 	case "linux":
 		// mtr needs to be installed manually currently
 		/*args := []string{"-c", "mtr " + cd.Config.Target[0].Target + " -z --show-ips -o LDRSBAWVGJMXI --json"}
 		cmd = exec.CommandContext(ctx, "/bin/bash", args...)*/
-		args := []string{"/C", "./lib/trip_linux --udp --mode json --multipath-strategy paris --dns-resolve-method cloudflare --report-cycles 5 --dns-lookup-as-info " + cd.Config.Target[0].Target}
+		args := []string{"-c", "./lib/trip_linux --icmp --mode json --multipath-strategy paris --dns-resolve-method cloudflare --report-cycles 5 --dns-lookup-as-info " + cd.Config.Target[0].Target}
 		cmd = exec.CommandContext(ctx, "/bin/bash", args...)
 		break
 	default:
@@ -126,7 +126,8 @@ func Mtr(cd *Probe) (MtrResult, error) {
 	ctx, cancel = context.WithTimeout(context.Background(), time.Duration(60)*time.Second)
 	defer cancel()
 
-	output, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
+	fmt.Printf("%s\n", output)
 	if err != nil {
 		return mtrResult, err
 	}
