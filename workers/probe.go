@@ -152,7 +152,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData) {
 
 			case probes.ProbeType_MTR:
 				log.Info("Running mtr test for ", agentCheck.Config.Target, "...")
-				mtr, err := probes.Mtr(&agentCheck)
+				mtr, err := probes.Mtr(&agentCheck, false)
 				if err != nil {
 					fmt.Println(err)
 				}

@@ -109,7 +109,7 @@ func Ping(ac *Probe, pingChan chan ProbeData, mtrProbe Probe) error {
 
 		// todo configurable threshold
 		if pingR.PacketLoss > 2 {
-			mtr, err := Mtr(&mtrProbe)
+			mtr, err := Mtr(&mtrProbe, true)
 			if err != nil {
 				fmt.Println(err)
 			}

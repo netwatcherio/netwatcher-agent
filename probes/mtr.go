@@ -7,6 +7,7 @@ import (
 	"log"
 	"os/exec"
 	"runtime"
+	"strconv"
 	"time"
 )
 
@@ -74,7 +75,7 @@ type MtrResult struct {
 }*/
 
 // Mtr run the check for mtr, take input from checkdata for the test, and update the mtrresult object
-func Mtr(cd *Probe) (MtrResult, error) {
+func Mtr(cd *Probe, triggered bool) (MtrResult, error) {
 	osDetect := runtime.GOOS
 	var mtrResult MtrResult
 	mtrResult.StartTimestamp = time.Now()
@@ -94,27 +95,32 @@ func Mtr(cd *Probe) (MtrResult, error) {
 
 	ctx := context.Background()
 
+	triggeredCount := 5
+
+	if triggered {
+		triggeredCount = 15
+	}
 	var cmd *exec.Cmd
 	switch osDetect {
 	case "windows":
 		// mtr needs to be installed manually currently
 		/*args := []string{"/C", "./lib/mtr_windows_x86 " + cd.Config.Target[0].Target + " -z --show-ips -o LDRSBAWVGJMXI --json"}
 		cmd = exec.CommandContext(ctx, "cmd", args...)*/
-		args := []string{"/C", "./lib/trip.exe --icmp --mode json --multipath-strategy paris --dns-resolve-method cloudflare --report-cycles 5 --dns-lookup-as-info " + cd.Config.Target[0].Target}
+		args := []string{"/C", "./lib/trip.exe --icmp --mode json --multipath-strategy paris --dns-resolve-method cloudflare --report-cycles " + strconv.Itoa(triggeredCount) + " --dns-lookup-as-info " + cd.Config.Target[0].Target}
 		cmd = exec.CommandContext(ctx, "cmd", args...)
 		break
 	case "darwin":
 		// mtr needs to be installed manually currently
 		/*args := []string{"-c", "./lib/mtr_darwin " + cd.Config.Target[0].Target + " -z --show-ips -o LDRSBAWVGJMXI --json"}
 		cmd = exec.CommandContext(ctx, "/bin/bash", args...)*/
-		args := []string{"-c", "./lib/trip_darwin --icmp --mode json --multipath-strategy paris --dns-resolve-method cloudflare --report-cycles 5 --dns-lookup-as-info " + cd.Config.Target[0].Target}
+		args := []string{"-c", "./lib/trip_darwin --icmp --mode json --multipath-strategy paris --dns-resolve-method cloudflare --report-cycles " + strconv.Itoa(triggeredCount) + " --dns-lookup-as-info " + cd.Config.Target[0].Target}
 		cmd = exec.CommandContext(ctx, "/bin/bash", args...)
 		break
 	case "linux":
 		// mtr needs to be installed manually currently
 		/*args := []string{"-c", "mtr " + cd.Config.Target[0].Target + " -z --show-ips -o LDRSBAWVGJMXI --json"}
 		cmd = exec.CommandContext(ctx, "/bin/bash", args...)*/
-		args := []string{"-c", "./lib/trip_linux --icmp --mode json --multipath-strategy paris --dns-resolve-method cloudflare --report-cycles 5 --dns-lookup-as-info " + cd.Config.Target[0].Target}
+		args := []string{"-c", "./lib/trip_linux --icmp --mode json --multipath-strategy paris --dns-resolve-method cloudflare --report-cycles " + strconv.Itoa(triggeredCount) + " --dns-lookup-as-info " + cd.Config.Target[0].Target}
 		cmd = exec.CommandContext(ctx, "/bin/bash", args...)
 		break
 	default:
@@ -132,7 +138,7 @@ func Mtr(cd *Probe) (MtrResult, error) {
 		return mtrResult, err
 	}
 
-	err = json.Unmarshal(output, &mtrResult)
+	err = json.Unmarshal(output, &mtrResult.Report)
 	if err != nil {
 		return mtrResult, err
 	}
