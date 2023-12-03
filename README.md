@@ -7,7 +7,9 @@ Netwatcher Agent is an application that ties to the control application. It is i
 ## Requirements
 
 - See documentation for rperf, trippy, and pro-bing
+- macOS, Linux, or Windows
 - Running instance of guardian (https://github.com/netwatcherio/guardian) + client (https://github.com/netwatcherio/netwatcher-client)
+- probably more
 
 ## Installation
 
