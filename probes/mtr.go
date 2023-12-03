@@ -133,7 +133,7 @@ func Mtr(cd *Probe, triggered bool) (MtrResult, error) {
 	defer cancel()
 
 	output, err := cmd.CombinedOutput()
-	fmt.Printf("%s\n", output)
+	//fmt.Printf("%s\n", output)
 	if err != nil {
 		return mtrResult, err
 	}
