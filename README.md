@@ -15,18 +15,23 @@ Currently it is best to be built from source, and the latest code is not product
    * If the agent hasn't been initialized on the control, it will allow the client to connect without including the agent's object ID
    * The agent ID is then saved to the configuration for later requests, as the panel will require it
 5. Start the application, it should run it's checks based on the ones configured on the panel
+   *Note: currently it requires sudo or set_cap to be used on linux, and Administrative permissions on Windows, with the appropriate firewall rules to allow ICMP, etc.*
+
+Please refer to pro_ping, rperf or trippy's documentation for further information regarding permissions, or submit a pull request/issue with changes. 😄
 
 ## Features *WIP*
 
-* [X]  MTR checks
-* [X]  rPerf checks
-* [ ]  Ping Tests
+* [X]  MTR checks (using trippy)
+* [X]  rPerf checks (simulated traffic
+* [X]  Ping Tests (pro-bing)
 * [ ]  Real VoIP checks?
 * [ ]  nmap?
+* [X]  System Information
 * [X]  Network Information
-* [X]  SpeedTests
-* [X]  Check targets fetched from API
-* [ ]  Windows Support
+* [ ]  SpeedTests (back on the todo)
+* [X]  Check targets fetched from API using WebSockets and JWT
+* [X]  Windows Support (kind of)
+* [ ]  Auto reconnect / deconnect on deactivate (wip)
 
 ## Changelog
 
@@ -35,7 +40,8 @@ Just look at commits, eventually I'll make a change log once more stable.
 ## Libraries
 
 - https://github.com/opensource-3d-p/rperf
-- https://github.com/traviscross/mtr
+- https://github.com/prometheus-community/pro-bing
+- https://github.com/fujiapple852/trippy
 
 # License
 
