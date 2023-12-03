@@ -109,24 +109,27 @@ func Ping(ac *Probe, pingChan chan ProbeData, mtrProbe Probe) error {
 
 		// todo configurable threshold
 		if pingR.PacketLoss > 2 {
-			mtr, err := Mtr(&mtrProbe, true)
-			if err != nil {
-				fmt.Println(err)
+			if len(mtrProbe.Config.Target) > 0 {
+
+				mtr, err := Mtr(&mtrProbe, true)
+				if err != nil {
+					fmt.Println(err)
+				}
+
+				/*m, err := json.Marshal(mtr)
+				if err != nil {
+					fmt.Print(err)
+				}*/
+
+				dC := ProbeData{
+					ProbeID:   mtrProbe.ID,
+					Triggered: true,
+					Data:      mtr,
+				}
+
+				fmt.Println("Triggered MTR for ", mtrProbe.Config.Target[0].Target, "...")
+				pingChan <- dC
 			}
-
-			/*m, err := json.Marshal(mtr)
-			if err != nil {
-				fmt.Print(err)
-			}*/
-
-			dC := ProbeData{
-				ProbeID:   mtrProbe.ID,
-				Triggered: true,
-				Data:      mtr,
-			}
-
-			fmt.Println("Triggered MTR for ", mtrProbe.Config.Target[0].Target, "...")
-			pingChan <- dC
 		}
 	}
 

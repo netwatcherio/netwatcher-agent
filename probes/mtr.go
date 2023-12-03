@@ -82,7 +82,7 @@ func Mtr(cd *Probe, triggered bool) (MtrResult, error) {
 
 	//todo convert this to use trippycli??
 
-	var cmdStr string
+	/*var cmdStr string*/
 	if runtime.GOARCH == "amd64" {
 		// Load your x86-specific external library here
 	} else if runtime.GOARCH == "arm64" {
@@ -91,7 +91,7 @@ func Mtr(cd *Probe, triggered bool) (MtrResult, error) {
 		fmt.Println("Unsupported architecture for MTR test")
 	}
 
-	cmdStr += " " + cd.Config.Target[0].Target + " -z --show-ips -o LDRSBAWVGJMXI --json"
+	/*cmdStr += " " + cd.Config.Target[0].Target + " -z --show-ips -o LDRSBAWVGJMXI --json"*/
 
 	ctx := context.Background()
 
@@ -103,11 +103,17 @@ func Mtr(cd *Probe, triggered bool) (MtrResult, error) {
 	var cmd *exec.Cmd
 	switch osDetect {
 	case "windows":
-		// mtr needs to be installed manually currently
-		/*args := []string{"/C", "./lib/mtr_windows_x86 " + cd.Config.Target[0].Target + " -z --show-ips -o LDRSBAWVGJMXI --json"}
-		cmd = exec.CommandContext(ctx, "cmd", args...)*/
-		args := []string{"/C", "./lib/trip.exe --icmp --mode json --multipath-strategy paris --dns-resolve-method cloudflare --report-cycles " + strconv.Itoa(triggeredCount) + " --dns-lookup-as-info " + cd.Config.Target[0].Target}
-		cmd = exec.CommandContext(ctx, "cmd", args...)
+		args := []string{
+			"--icmp",
+			"--mode", "json",
+			"--multipath-strategy", "classic",
+			"--dns-resolve-method", "cloudflare",
+			"--report-cycles", strconv.Itoa(triggeredCount),
+			"--dns-lookup-as-info", cd.Config.Target[0].Target,
+		}
+
+		// Construct the command with context and arguments
+		cmd = exec.CommandContext(ctx, "./lib/trip_windows-x86_64.exe", args...)
 		break
 	case "darwin":
 		// mtr needs to be installed manually currently
@@ -133,7 +139,7 @@ func Mtr(cd *Probe, triggered bool) (MtrResult, error) {
 	defer cancel()
 
 	output, err := cmd.CombinedOutput()
-	//fmt.Printf("%s\n", output)
+	fmt.Printf("%s\n", output)
 	if err != nil {
 		return mtrResult, err
 	}
