@@ -1,5 +1,7 @@
 # NetWatcher Agent
 
+Latest version: v1.0.5?
+
 ## Intro
 
 Netwatcher Agent is an application that ties to the control application. It is intended to be used by MSPs and various service providers to monitor their customer sites while reporting minimally invasive data. It uses the common mtr & rperf library binaries. The control application will be able to be self hosted, with various control & updatability functions in the future.
