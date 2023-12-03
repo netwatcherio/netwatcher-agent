@@ -4,6 +4,11 @@
 
 Netwatcher Agent is an application that ties to the control application. It is intended to be used by MSPs and various service providers to monitor their customer sites while reporting minimally invasive data. It uses the common mtr & rperf library binaries. The control application will be able to be self hosted, with various control & updatability functions in the future.
 
+## Requirements
+
+- See documentation for rperf, trippy, and pro-bing
+- Running instance of guardian (https://github.com/netwatcherio/guardian) + client (https://github.com/netwatcherio/netwatcher-client)
+
 ## Installation
 
 Currently it is best to be built from source, and the latest code is not production ready. However, see below. *Development platform is OSX currently, need to make it work on Windows lol...*
@@ -31,7 +36,7 @@ Please refer to pro_ping, rperf or trippy's documentation for further informatio
 * [ ]  SpeedTests (back on the todo)
 * [X]  Check targets fetched from API using WebSockets and JWT
 * [X]  Windows Support (kind of)
-* [ ]  Auto reconnect / deconnect on deactivate (wip)
+* [ ]
 
 ## Changelog
 
