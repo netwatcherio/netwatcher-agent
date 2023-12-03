@@ -120,7 +120,7 @@ func Mtr(cd *Probe, triggered bool) (MtrResult, error) {
 		// mtr needs to be installed manually currently
 		/*args := []string{"-c", "mtr " + cd.Config.Target[0].Target + " -z --show-ips -o LDRSBAWVGJMXI --json"}
 		cmd = exec.CommandContext(ctx, "/bin/bash", args...)*/
-		args := []string{"-c", "./lib/trip_linux-aarch64 --icmp --mode json --multipath-strategy paris --dns-resolve-method cloudflare --report-cycles " + strconv.Itoa(triggeredCount) + " --dns-lookup-as-info " + cd.Config.Target[0].Target}
+		args := []string{"-c", "./lib/trip_linux-x86_64 --icmp --mode json --multipath-strategy paris --dns-resolve-method cloudflare --report-cycles " + strconv.Itoa(triggeredCount) + " --dns-lookup-as-info " + cd.Config.Target[0].Target}
 		cmd = exec.CommandContext(ctx, "/bin/bash", args...)
 		break
 	default:
