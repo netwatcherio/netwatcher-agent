@@ -100,8 +100,8 @@ func (r *RPerfResults) Run(cd *Probe) error {
 	switch osDetect {
 	case "windows":
 		targetHost := strings.Split(cd.Config.Target[0].Target, ":")
-		args := []string{"C/", "./lib/rperf_windows64 -s -p " + targetHost[1]}
-		cmd = exec.CommandContext(context.TODO(), "cmd", args...)
+		args := []string{"-s -p " + targetHost[1]}
+		cmd = exec.CommandContext(context.TODO(), "./lib/rperf_windows-x86_64.exe", args...)
 		break
 	case "darwin":
 		targetHost := strings.Split(cd.Config.Target[0].Target, ":")
@@ -114,8 +114,7 @@ func (r *RPerfResults) Run(cd *Probe) error {
 		cmd = exec.CommandContext(context.TODO(), "/bin/bash", args...)
 		break
 	default:
-		log.Fatalf("Unknown OS")
-		panic("TODO")
+		log.Print("Unknown OS")
 	}
 
 	out, err := cmd.CombinedOutput()
@@ -137,8 +136,8 @@ func (r *RPerfResults) Check(cd *Probe) error {
 	switch osDetect {
 	case "windows":
 		targetHost := strings.Split(cd.Config.Target[0].Target, ":")
-		args := []string{"C/", "./lib/rperf_windows.exe -c " + targetHost[0] + " -p " + targetHost[1] + " -b 8K -t " + strconv.Itoa(cd.Config.Duration) + " --udp -f json"}
-		cmd = exec.CommandContext(context.TODO(), "cmd", args...)
+		args := []string{" -c " + targetHost[0] + " -p " + targetHost[1] + " -b 8K -t " + strconv.Itoa(cd.Config.Duration) + " --udp -f json"}
+		cmd = exec.CommandContext(context.TODO(), "./lib/rperf_windows-x86_64.exe", args...)
 		break
 	case "darwin":
 		targetHost := strings.Split(cd.Config.Target[0].Target, ":")
@@ -151,7 +150,7 @@ func (r *RPerfResults) Check(cd *Probe) error {
 		cmd = exec.CommandContext(context.TODO(), "/bin/bash", args...)
 		break
 	default:
-		log.Fatalf("Unknown OS")
+		log.Print("Unknown OS")
 	}
 
 	out, err := cmd.CombinedOutput()
