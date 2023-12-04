@@ -50,6 +50,7 @@ func Ping(ac *Probe, pingChan chan ProbeData, mtrProbe Probe) error {
 
 	switch osDetect {
 	case "windows":
+		pinger.Size = 548
 		pinger.SetPrivileged(true)
 		break
 	case "darwin":
@@ -64,7 +65,6 @@ func Ping(ac *Probe, pingChan chan ProbeData, mtrProbe Probe) error {
 	}
 
 	pinger.Count = ac.Config.Duration
-	pinger.SetPrivileged(true)
 
 	/*pinger.OnRecv = func(pkt *probing.Packet) {
 		fmt.Printf("%d bytes from %s: icmp_seq=%d time=%v\n",
