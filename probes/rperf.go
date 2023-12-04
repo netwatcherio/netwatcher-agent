@@ -136,7 +136,7 @@ func (r *RPerfResults) Check(cd *Probe) error {
 	switch osDetect {
 	case "windows":
 		targetHost := strings.Split(cd.Config.Target[0].Target, ":")
-		args := []string{"-c " + targetHost[0], " -p " + targetHost[1], "-b 8K", "-t " + strconv.Itoa(cd.Config.Duration), "--udp", "-f json"}
+		args := []string{"-c " + targetHost[0], "-p " + targetHost[1], "-b 8K", "-t " + strconv.Itoa(cd.Config.Duration), "--udp", "-f json"}
 		cmd = exec.CommandContext(context.TODO(), "./lib/rperf_windows-x86_64.exe", args...)
 		break
 	case "darwin":
