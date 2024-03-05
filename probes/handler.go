@@ -74,6 +74,7 @@ const (
 	ProbeType_SPEEDTEST   ProbeType = "SPEEDTEST"
 	ProbeType_NETWORKINFO ProbeType = "NETINFO"
 	ProbeType_SYSTEMINFO  ProbeType = "SYSINFO"
+	ProbeType_TRAFFICSIM  ProbeType = "TRAFFICSIM"
 )
 
 type ProbeConfig struct {
