@@ -300,7 +300,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData) {
 					// todo implement call back channel for data / statistics
 					err := probes.TrafficSimClient(&agentCheck)
 					if err != nil {
-						return
+						log.Error(err)
 					}
 				}
 				continue

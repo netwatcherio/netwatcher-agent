@@ -9,13 +9,12 @@ import (
 )
 
 const (
-	configFile    = "./config.conf"
 	defaultConfig = "HOST=https://api.netwatcher.io\nHOST_WS=wss://api.netwatcher.io/agent_ws\nID=PUT AGENT ID/SECRET HERE\nPIN=PUT PIN HERE\n"
 )
 
 const VERSION = "0.1.0rc1"
 
-func loadConfig() error {
+func loadConfig(configFile string) error {
 	fmt.Printf("NetWatcher v%s - Copyright (c) 2023-%d Shaun Agostinho\n", VERSION, time.Now().Year())
 	// Check if the config file exists in the local directory
 	_, err := os.Stat(configFile)

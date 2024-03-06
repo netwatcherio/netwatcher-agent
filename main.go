@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"github.com/netwatcherio/netwatcher-agent/probes"
 	"github.com/netwatcherio/netwatcher-agent/workers"
@@ -15,7 +16,11 @@ import (
 func main() {
 	fmt.Printf("Starting NetWatcher Agent...\n")
 
-	loadConfig()
+	var configPath string
+	flag.StringVar(&configPath, "config", "./config.conf", "Path to the config file")
+	flag.Parse()
+
+	loadConfig(configPath)
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
