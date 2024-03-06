@@ -21,13 +21,51 @@ import (
 // file paths
 const (
 	privateKeyPath  = "private_key.pem"
-	publicKeyPath   = "public_key.pem"
 	certificatePath = "certificate.pem"
 	keySize         = 2048 // Recommended size for RSA keys
 )
 
+var message = "Hello, World!"
+
+func TrafficSimClient(pp *Probe) error {
+	// targetHost := strings.Split(pp.Config.Target[0].Target, ":")
+
+	tlsConf := &tls.Config{
+		InsecureSkipVerify: true,
+		NextProtos:         []string{"netwatcher-agent"},
+	}
+	conn, err := quic.DialAddr(context.Background(), pp.Config.Target[0].Target, tlsConf, nil)
+	if err != nil {
+		return err
+	}
+	defer conn.CloseWithError(0, "")
+
+	stream, err := conn.OpenStreamSync(context.Background())
+	if err != nil {
+		return err
+	}
+	defer stream.Close()
+
+	fmt.Printf("Client: Sending '%s'\n", message)
+	_, err = stream.Write([]byte(message))
+	if err != nil {
+		return err
+	}
+
+	buf := make([]byte, len(message))
+	_, err = io.ReadFull(stream, buf)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Client: Got '%s'\n", buf)
+
+	return nil
+}
+
 func TrafficSimServer(pp *Probe) error {
 	// targetHost := strings.Split(pp.Config.Target[0].Target, ":")
+
+	// todo handle errors better?
 
 	listener, err := quic.ListenAddr(pp.Config.Target[0].Target, generateTLSConfig(), nil)
 	if err != nil {

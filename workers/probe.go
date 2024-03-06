@@ -286,6 +286,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData) {
 					probes.InitTrafficSimServer()
 
 					if !alreadyRunningTrafficSim {
+						// todo implement call back channel for data / statistics
 						log.Info("Running traffic sim server...")
 						err := probes.TrafficSimServer(&agentCheck)
 						if err != nil {
@@ -295,6 +296,9 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData) {
 						}
 						alreadyRunningTrafficSim = true
 					}
+				} else {
+					// todo implement call back channel for data / statistics
+					probes.TrafficSimClient(&agentCheck)
 				}
 				continue
 
