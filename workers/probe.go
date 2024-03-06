@@ -110,6 +110,8 @@ func contains(ids []primitive.ObjectID, id primitive.ObjectID) bool {
 	return false
 }
 
+var alreadyRunningTrafficSim = false
+
 func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData) {
 	go func(i primitive.ObjectID, dC chan probes.ProbeData) {
 		for {
@@ -149,7 +151,6 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData) {
 				time.Sleep(time.Duration(agentCheck.Config.Interval) * time.Minute)
 				// todo push
 				continue
-
 			case probes.ProbeType_MTR:
 				log.Info("Running mtr test for ", agentCheck.Config.Target, "...")
 				mtr, err := probes.Mtr(&agentCheck, false)
@@ -279,6 +280,22 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData) {
 
 				// todo make configurable??
 				time.Sleep(time.Minute * 10)
+				continue
+			case probes.ProbeType_TRAFFICSIM:
+				if agentCheck.Config.Server {
+					probes.InitTrafficSimServer()
+
+					if !alreadyRunningTrafficSim {
+						log.Info("Running traffic sim server...")
+						err := probes.TrafficSimServer(&agentCheck)
+						if err != nil {
+							fmt.Println(err)
+							fmt.Println("exiting loop, please check firewall, and recreate check, you may need to reboot")
+							time.Sleep(time.Second * 30)
+						}
+						alreadyRunningTrafficSim = true
+					}
+				}
 				continue
 
 			// todo other checks like port scans etc.
