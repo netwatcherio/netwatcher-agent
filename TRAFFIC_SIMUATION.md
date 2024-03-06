@@ -1,5 +1,5 @@
 ```
-Client receives list of probes + traffic simulation destination endpoints (calculated by their public IP, and defined port)
+ Client receives list of probes + traffic simulation destination endpoints (calculated by their public IP, and defined port)
 Server also receives list of calculated endpoints with their agent UUID + general information for comparision
 
 When client initiates handshake, it already knows the destination UUID of the target agent for the traffic simulation using UDP hole punching
@@ -37,6 +37,8 @@ Server will start UDP listener, and wait for connections
         CLIENT_UUID=%=SERVER_UUID=%===SEND_TIMESTAMP==SEQUENCE_NUMBER
     -> We can use the format of destination first for both to determine the direction because we know both ends already, so it should be easy to figure out
     -> When the client responds to the server's latency check, it will also do the same but in the opposite direction as previously described.
+
+We also need to include the original probe ID in the handshake so the server can still report it's findings to the backend and have it link to the original probe ID, yet include the agent/client destination as the target, and the ID of the server somewhere, or maybe we can infer it from the probe's original target to begin with, eg. no extra information in target field, we can assume it was to the server, vs if it has the other agent ID it was to the agent instead of the server?
 
 When both ends are connected and running their tests, we will also need to keep track of latency for each packet/packets, sequence and out of order / duplicate packets.
 ```

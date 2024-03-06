@@ -1,7 +1,6 @@
 package probes
 
 import (
-	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/tls"
@@ -9,8 +8,8 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
-	"github.com/quic-go/quic-go"
 	log "github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"io"
 	"io/ioutil"
 	"math/big"
@@ -25,10 +24,25 @@ const (
 	keySize         = 2048 // Recommended size for RSA keys
 )
 
-var message = "Hello, World!"
+const (
+	TrafficSimMsgType_Registration string = "registration"
+	TrafficSimMsgType_Payload      string = "payload"
+)
 
-func TrafficSimClient(pp *Probe) error {
+type TrafficSimMsg struct {
+	Type    string             `json:"type"`    // type of message, eg registration, etc
+	Agent   primitive.ObjectID `json:"agent"`   // if sending to a server, it will be the agent id of client, if sending to a client, it will be the agent id of the server
+	From    primitive.ObjectID `json:"from"`    // if replying to a message from a client, it will be the same but in reverse
+	Payload string             `json:"payload"` // the actual data
+}
+
+/*func TrafficSimClient(pp *Probe) error {
 	// targetHost := strings.Split(pp.Config.Target[0].Target, ":")
+
+	err := checkAndGenerateCertificateIfNeeded()
+	if err != nil {
+		return err
+	}
 
 	tlsConf := &tls.Config{
 		InsecureSkipVerify: true,
@@ -60,9 +74,9 @@ func TrafficSimClient(pp *Probe) error {
 	fmt.Printf("Client: Got '%s'\n", buf)
 
 	return nil
-}
+}*/
 
-func TrafficSimServer(pp *Probe) error {
+/*func TrafficSimServer(pp *Probe) error {
 	// targetHost := strings.Split(pp.Config.Target[0].Target, ":")
 
 	// todo handle errors better?
@@ -88,14 +102,7 @@ func TrafficSimServer(pp *Probe) error {
 		_, err = io.Copy(loggingWriter{stream}, stream)
 	}()
 	return nil
-}
-
-func InitTrafficSimServer() {
-	err := checkAndGenerateCertificateIfNeeded()
-	if err != nil {
-		log.Fatalf("Failed to generate certificate: %v", err)
-	}
-}
+}*/
 
 // A wrapper for io.Writer that also logs the message.
 type loggingWriter struct{ io.Writer }
@@ -133,7 +140,12 @@ func generatePrivateKey(filePath string, keySize int) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			log.Errorf("Failed to close file: %v", err)
+		}
+	}(file)
 
 	privatePEM := &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(privateKey)}
 	return pem.Encode(file, privatePEM)
@@ -167,7 +179,12 @@ func generateCertificate(certPath, privateKeyPath string) error {
 	if err != nil {
 		return err
 	}
-	defer certFile.Close()
+	defer func(certFile *os.File) {
+		err := certFile.Close()
+		if err != nil {
+			log.Errorf("Failed to close file: %v", err)
+		}
+	}(certFile)
 
 	return pem.Encode(certFile, &pem.Block{Type: "CERTIFICATE", Bytes: certDER})
 }
