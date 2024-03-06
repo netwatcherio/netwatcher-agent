@@ -298,7 +298,10 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData) {
 					}
 				} else {
 					// todo implement call back channel for data / statistics
-					probes.TrafficSimClient(&agentCheck)
+					err := probes.TrafficSimClient(&agentCheck)
+					if err != nil {
+						return
+					}
 				}
 				continue
 

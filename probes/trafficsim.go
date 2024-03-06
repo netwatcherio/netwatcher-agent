@@ -66,26 +66,28 @@ func TrafficSimServer(pp *Probe) error {
 	// targetHost := strings.Split(pp.Config.Target[0].Target, ":")
 
 	// todo handle errors better?
+	go func() {
 
-	listener, err := quic.ListenAddr(pp.Config.Target[0].Target, generateTLSConfig(), nil)
-	if err != nil {
-		return err
-	}
-	defer listener.Close()
+		listener, err := quic.ListenAddr(pp.Config.Target[0].Target, generateTLSConfig(), nil)
+		if err != nil {
+			log.Errorf(err.Error())
+		}
+		defer listener.Close()
 
-	conn, err := listener.Accept(context.Background())
-	if err != nil {
-		return err
-	}
+		conn, err := listener.Accept(context.Background())
+		if err != nil {
+			log.Errorf(err.Error())
+		}
 
-	stream, err := conn.AcceptStream(context.Background())
-	if err != nil {
-		panic(err)
-	}
-	defer stream.Close()
+		stream, err := conn.AcceptStream(context.Background())
+		if err != nil {
+			panic(err)
+		}
+		defer stream.Close()
 
-	_, err = io.Copy(loggingWriter{stream}, stream)
-	return err
+		_, err = io.Copy(loggingWriter{stream}, stream)
+	}()
+	return nil
 }
 
 func InitTrafficSimServer() {
