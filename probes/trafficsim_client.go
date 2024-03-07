@@ -6,11 +6,12 @@ import (
 	"encoding/json"
 	"github.com/quic-go/quic-go"
 	log "github.com/sirupsen/logrus"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"io"
 	"time"
 )
 
-func TrafficSimClient(pp *Probe) {
+// TrafficSimClient is the type of payload that can be sent, thisAgent would be the ID of this, otherAgent is the server
+func TrafficSimClient(pp *Probe, sim *TrafficSim) {
 	// todo take input for channel to pipe the output to the websocket handler
 
 	err := checkAndGenerateCertificateIfNeeded()
@@ -28,44 +29,66 @@ func TrafficSimClient(pp *Probe) {
 	conn, err := quic.DialAddr(context.Background(), pp.Config.Target[0].Target, tlsConf, nil)
 	if err != nil {
 		log.Errorf("Failed to dial: %v", err)
+		sim.Errored = true
 		return
 	}
 	defer func(conn quic.Connection, code quic.ApplicationErrorCode, s string) {
 		err := conn.CloseWithError(code, s)
 		if err != nil {
 			log.Errorf("Failed to close connection: %v", err)
+			sim.Errored = true
 			return
 		}
 	}(conn, 0, "")
 
-	stream, err := conn.OpenStreamSync(context.Background())
+	sim.Conn = &conn
+
+	stream, err := (*sim.Conn).OpenStreamSync(context.Background())
 	if err != nil {
 		log.Errorf("Failed to open stream: %v", err)
+		sim.Errored = true
 		return
 	}
 	defer func(stream quic.Stream) {
 		err := stream.Close()
 		if err != nil {
 			log.Errorf("Failed to close stream: %v", err)
+			sim.Errored = true
 			return
 		}
 	}(stream)
 
-	// Example of sending a registration message
-	err = sendRegistration(stream, pp)
-	if err != nil {
-		log.Errorf("Failed to send registration: %v", err)
-		return
+	sim.Stream = &stream
+
+	// to register we must send the registration payload?? fuck
+	regPayload := &TrafficSimMsg{
+		Type:    TrafficSimMsgType_Registration,
+		Agent:   sim.OtherAgent,
+		From:    sim.ThisAgent,
+		Payload: "let me fucking register",
 	}
 
 	// Main loop for sending data and receiving responses
 	for {
 		// Replace with actual logic to construct your data packet
-		err = sendData(stream, pp)
-		if err != nil {
-			log.Errorf("Failed to send data: %v", err)
-			return
+		if !sim.Registered {
+			err = sim.sendMessage(regPayload)
+			if err != nil {
+				log.Errorf("Failed to send registration: %v", err)
+				return
+			}
+
+			buf := make([]byte, SimMsgSize)
+			n, err := io.ReadFull(*sim.Stream, buf)
+			if err != nil {
+				log.Errorf("something went wrong in trying to read data")
+			}
+
+			resp := new(TrafficSimMsg)
+
+			json.Unmarshal(buf[:n], resp)
 		}
+		// todo handle ticker once we've actually registered??? fuck i hate low level "networking"
 
 		// Optionally wait or handle responses
 		time.Sleep(1 * time.Second) // Example sleep, adjust as needed
@@ -73,22 +96,3 @@ func TrafficSimClient(pp *Probe) {
 }
 
 // seen as we know the list of accepted agents / clients, we can presume encrypted traffic is trusted lol?
-
-func sendRegistration(stream quic.Stream, pp *Probe, fromUuid primitive.ObjectID, payload string) error {
-	msg := TrafficSimMsg{From: fromUuid, Agent: pp.Agent, Type: TrafficSimMsgType_Registration, Payload: payload}
-	return sendMessage(stream, msg)
-}
-
-func sendData(stream quic.Stream, pp *Probe, fromUuid primitive.ObjectID, payload string) error {
-	msg := TrafficSimMsg{From: fromUuid, Agent: pp.Agent, Type: TrafficSimMsgType_Payload, Payload: payload}
-	return sendMessage(stream, msg)
-}
-
-func sendMessage(stream quic.Stream, msg TrafficSimMsg) error {
-	bytes, err := json.Marshal(msg)
-	if err != nil {
-		return err
-	}
-	_, err = stream.Write(bytes)
-	return err
-}

@@ -8,22 +8,25 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func TrafficSimServer(pp *Probe) {
+func TrafficSimServer(pp *Probe, sim *TrafficSim) {
 	err := checkAndGenerateCertificateIfNeeded()
 	if err != nil {
 		log.Errorf("Failed to check and generate certificate: %v", err)
+		sim.Errored = true
 		return
 	}
 
 	listener, err := quic.ListenAddr(pp.Config.Target[0].Target, generateTLSConfig(), nil)
 	if err != nil {
 		log.Errorf("Failed to listen: %v", err)
+		sim.Errored = true
 		return
 	}
 	defer func(listener *quic.Listener) {
 		err := listener.Close()
 		if err != nil {
 			log.Errorf("Failed to close listener: %v", err)
+			sim.Errored = true
 			return
 		}
 	}(listener)
@@ -32,58 +35,93 @@ func TrafficSimServer(pp *Probe) {
 		conn, err := listener.Accept(context.Background())
 		if err != nil {
 			log.Errorf("Failed to accept connection: %v", err)
+			sim.Errored = true
 			continue
 		}
 
-		go handleConnection(conn)
+		sim.Conn = &conn
+
+		go sim.handleConnection()
 	}
 }
 
-func handleConnection(conn quic.Connection) {
+// handleConnection handles the incoming connection for the simulation server
+func (sim *TrafficSim) handleConnection() {
 	for {
-		stream, err := conn.AcceptStream(context.Background())
+		stream, err := (*sim.Conn).AcceptStream(context.Background())
 		if err != nil {
 			log.Errorf("Failed to accept stream: %v", err)
 			break
 		}
 
-		go handleStream(stream)
+		sim.Stream = &stream
+
+		go sim.handleStream()
 	}
 }
 
-func handleStream(stream quic.Stream) {
+func (sim *TrafficSim) handleStream() {
 	defer func(stream quic.Stream) {
 		err := stream.Close()
 		if err != nil {
 			log.Errorf("Failed to close stream: %v", err)
 		}
-	}(stream)
+	}(*sim.Stream)
 
-	var buf [1024]byte
-	n, err := stream.Read(buf[:])
+	var buf [SimMsgSize]byte
+	n, err := (*sim.Stream).Read(buf[:])
 	if err != nil {
 		log.Printf("Failed to read from stream: %v", err)
 		return
 	}
 
-	var msg map[string]interface{}
+	var msg TrafficSimMsg
 	if err := json.Unmarshal(buf[:n], &msg); err != nil {
 		log.Printf("Failed to unmarshal message: %v", err)
 		return
 	}
 
-	processMessage(stream, msg)
+	sim.processMessage(&msg)
 }
 
-func processMessage(stream quic.Stream, msg map[string]interface{}) {
-	switch msg["type"] {
-	case "registration":
-		fmt.Println("Handling registration")
-		// handle registration
-	case "data":
+func (sim *TrafficSim) processMessage(msg *TrafficSimMsg) {
+	// todo send this over to the channel
+
+	switch msg.Type {
+	case TrafficSimMsgType_Registration:
+		log.Warningf("handling registration from client %v", sim.ThisAgent)
+		// todo handle registration
+		// when registering we need to validate that we infact have the far end agent in our list of approved agents??
+		// this seems less likely to be abused, and if someone does, damn they are smart...
+		// mind you it is open source 🤪
+		log.Warningf("registering client %v", msg)
+
+		// todo validate from and destination agent
+
+		log.Warningf("sending registration response to client %v", msg.From)
+
+		msg.Payload = "registered"
+		msg.From = sim.ThisAgent
+
+		log.Info("sending information to the local ip of the client %v", (*sim.Conn).LocalAddr())
+		log.Info("sending information to the remove ip of the client %v", (*sim.Conn).RemoteAddr())
+
+		marshal, err := json.Marshal(msg)
+		if err != nil {
+			log.Errorf("Failed to marshal message: %v", err)
+			return
+		}
+		(*sim.Stream).Write(marshal)
+	case TrafficSimMsgType_Payload:
 		fmt.Println("Handling data")
-		// handle data
+		// todo handle data
 	default:
-		fmt.Printf("Unknown message type: %v\n", msg["type"])
+		dataRecv, err := json.Marshal(msg)
+		if err != nil {
+			log.Errorf("Failed to marshal message: %v", err)
+			return
+		}
+
+		fmt.Printf("Unknown message type: %v\n", dataRecv)
 	}
 }

@@ -52,7 +52,7 @@ func findMatchingMTRProbe(probe probes.Probe) (probes.Probe, error) {
 	return foundProbe, nil
 }
 
-func InitProbeWorker(checkChan chan []probes.Probe, dataChan chan probes.ProbeData) {
+func InitProbeWorker(checkChan chan []probes.Probe, dataChan chan probes.ProbeData, thisAgent primitive.ObjectID) {
 	go func(aC chan []probes.Probe, dC chan probes.ProbeData) {
 		for {
 			a := <-aC
@@ -75,7 +75,7 @@ func InitProbeWorker(checkChan chan []probes.Probe, dataChan chan probes.ProbeDa
 
 				if !ok {
 					log.Infof("Starting worker for probe %s", ad.ID.Hex())
-					startCheckWorker(ad.ID, dataChan)
+					startCheckWorker(ad.ID, dataChan, thisAgent)
 				} else {
 					//checkWorkers.Swap(ad.ID, ad)
 					log.Infof("NOT Swapping probe with existing %s", ad.ID.Hex())
@@ -93,6 +93,7 @@ func InitProbeWorker(checkChan chan []probes.Probe, dataChan chan probes.ProbeDa
 				if !contains(newIds, value.(ProbeWorkerS).Probe.ID) {
 					v := value.(ProbeWorkerS)
 					v.ToRemove = true
+					// if a check if running, we need to figure out a way to kill the process....? or just let it run?
 					log.Warnf("Probe marked as to be removed %s", v.Probe.ID.Hex())
 				}
 				return true
@@ -110,9 +111,11 @@ func contains(ids []primitive.ObjectID, id primitive.ObjectID) bool {
 	return false
 }
 
-var alreadyRunningTrafficSim = false
+var trafficSimServer *probes.TrafficSim
 
-func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData) {
+var trafficSimClients []*probes.TrafficSim
+
+func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thisAgent primitive.ObjectID) {
 	go func(i primitive.ObjectID, dC chan probes.ProbeData) {
 		for {
 			agentCheckW, _ := checkWorkers.Load(i)
@@ -129,6 +132,54 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData) {
 			agentCheck := agentCheckW.(ProbeWorkerS).Probe
 
 			switch agentCheck.Type {
+			case probes.ProbeType_TRAFFICSIM:
+				if agentCheck.Config.Server {
+					if trafficSimServer == nil || !trafficSimServer.Running || trafficSimServer.Errored {
+						trafficSimServer = &probes.TrafficSim{
+							Running:     false,
+							Errored:     false,
+							DataSend:    make(chan string),
+							DataReceive: make(chan string),
+							ThisAgent:   thisAgent,
+							OtherAgent:  primitive.ObjectID{},
+							// todo provide list of approved agents
+						}
+
+						// todo implement call back channel for data / statistics
+						log.Info("Running traffic sim server...")
+						// lol do i have to pass this to the go func ??
+						// "i think i do" - co-pilot
+						// lol the co-pilot is right... probably
+						log.Info("Starting traffic sim server...")
+						probes.TrafficSimServer(&agentCheck, trafficSimServer)
+						trafficSimServer.Running = true
+					}
+					continue
+				} else {
+					// todo implement call back channel for data / statistics
+
+					simClient := &probes.TrafficSim{
+						Running:     false,
+						Errored:     false,
+						DataSend:    make(chan string),
+						DataReceive: make(chan string),
+						Conn:        nil,
+						Stream:      nil,
+						ThisAgent:   thisAgent,
+						OtherAgent:  agentCheck.Config.Target[0].Agent,
+						IPAddress:   "",
+						Port:        "",
+						Type:        "",
+						Registered:  false,
+					}
+
+					trafficSimClients = append(trafficSimClients, simClient)
+
+					probes.TrafficSimClient(&agentCheck, simClient)
+					continue
+				}
+				continue
+
 			case probes.ProbeType_SYSTEMINFO:
 				log.Info("Running system test")
 				if agentCheck.Config.Interval <= 0 {
@@ -280,29 +331,6 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData) {
 
 				// todo make configurable??
 				time.Sleep(time.Minute * 10)
-				continue
-			case probes.ProbeType_TRAFFICSIM:
-				if agentCheck.Config.Server {
-					probes.InitTrafficSimServer()
-
-					if !alreadyRunningTrafficSim {
-						// todo implement call back channel for data / statistics
-						log.Info("Running traffic sim server...")
-						err := probes.TrafficSimServer(&agentCheck)
-						if err != nil {
-							fmt.Println(err)
-							fmt.Println("exiting loop, please check firewall, and recreate check, you may need to reboot")
-							time.Sleep(time.Second * 30)
-						}
-						alreadyRunningTrafficSim = true
-					}
-				} else {
-					// todo implement call back channel for data / statistics
-					err := probes.TrafficSimClient(&agentCheck)
-					if err != nil {
-						log.Error(err)
-					}
-				}
 				continue
 
 			// todo other checks like port scans etc.

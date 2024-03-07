@@ -6,11 +6,11 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/json"
 	"encoding/pem"
-	"fmt"
+	"github.com/quic-go/quic-go"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"io"
 	"io/ioutil"
 	"math/big"
 	"os"
@@ -19,21 +19,43 @@ import (
 
 // file paths
 const (
-	privateKeyPath  = "private_key.pem"
-	certificatePath = "certificate.pem"
-	keySize         = 2048 // Recommended size for RSA keys
+	privateKeyPath                                   = "private_key.pem"
+	certificatePath                                  = "certificate.pem"
+	keySize                                          = 2048 // Recommended size for RSA keys
+	TrafficSimMsgType_Registration TrafficSimPayload = "registration"
+	TrafficSimMsgType_Payload      TrafficSimPayload = "payload"
+	SimMsgSize                                       = 128 // does this need to be higher? what will our marshaled json be in size? keeping at 1024 to be safe
 )
 
-const (
-	TrafficSimMsgType_Registration string = "registration"
-	TrafficSimMsgType_Payload      string = "payload"
-)
+type TrafficSimPayload string
 
 type TrafficSimMsg struct {
-	Type    string             `json:"type"`    // type of message, eg registration, etc
+	Type    TrafficSimPayload  `json:"type"`    // type of message, eg registration, etc
 	Agent   primitive.ObjectID `json:"agent"`   // if sending to a server, it will be the agent id of client, if sending to a client, it will be the agent id of the server
 	From    primitive.ObjectID `json:"from"`    // if replying to a message from a client, it will be the same but in reverse
 	Payload string             `json:"payload"` // the actual data
+}
+
+type TrafficSimType string
+
+const (
+	TrafficSimType_Client TrafficSimType = "client"
+	TrafficSimType_Server TrafficSimType = "server"
+)
+
+type TrafficSim struct {
+	Running     bool
+	Errored     bool
+	DataSend    chan string
+	DataReceive chan string
+	Conn        *quic.Connection
+	Stream      *quic.Stream
+	ThisAgent   primitive.ObjectID
+	OtherAgent  primitive.ObjectID
+	IPAddress   string
+	Port        string // make this int?
+	Type        TrafficSimType
+	Registered  bool
 }
 
 /*func TrafficSimClient(pp *Probe) error {
@@ -104,15 +126,18 @@ type TrafficSimMsg struct {
 	return nil
 }*/
 
-// A wrapper for io.Writer that also logs the message.
-type loggingWriter struct{ io.Writer }
+// file paths and key size remain unchanged
 
-func (w loggingWriter) Write(b []byte) (int, error) {
-	fmt.Printf("Server: Got '%s'\n", string(b))
-	return w.Writer.Write(b)
+func (sim *TrafficSim) sendMessage(msg *TrafficSimMsg) error {
+	bytes, err := json.Marshal(&msg)
+	if err != nil {
+		return err
+	}
+	_, err = (*sim.Stream).Write(bytes)
+	return err
 }
 
-// file paths and key size remain unchanged
+// below is the certificate bull shiet
 
 func checkAndGenerateCertificateIfNeeded() error {
 	if !fileExists(privateKeyPath) || !fileExists(certificatePath) {

@@ -7,6 +7,7 @@ import (
 	"github.com/netwatcherio/netwatcher-agent/workers"
 	"github.com/netwatcherio/netwatcher-agent/ws"
 	log "github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"os"
 	"os/signal"
 	"runtime"
@@ -34,7 +35,6 @@ func main() {
 
 	var probeGetCh = make(chan []probes.Probe)
 	var probeDataCh = make(chan probes.ProbeData)
-	workers.InitProbeWorker(probeGetCh, probeDataCh)
 
 	wsH := &ws.WebSocketHandler{
 		Host:       os.Getenv("HOST"),
@@ -44,10 +44,8 @@ func main() {
 		ProbeGetCh: probeGetCh,
 	}
 	wsH.InitWS()
+	// init the config getter before starting the probe workers?
 	workers.InitProbeDataWorker(wsH, probeDataCh)
-
-	// todo handle if on start it isn't able to pull information from backend??
-	// eg. power goes out but network fails to come up?
 
 	go func(ws *ws.WebSocketHandler) {
 		for {
@@ -56,6 +54,16 @@ func main() {
 			ws.GetConnection().Emit("probe_get", []byte("please"))
 		}
 	}(wsH)
+
+	thisAgent, err := primitive.ObjectIDFromHex(wsH.ID)
+	if err != nil {
+		return
+	}
+
+	workers.InitProbeWorker(probeGetCh, probeDataCh, thisAgent)
+
+	// todo handle if on start it isn't able to pull information from backend??
+	// eg. power goes out but network fails to come up?
 
 	// todo input channel into wsH for inbound/outbound data to be handled
 	// if a list of probes is received, send it to the channel for inbound probes and such
