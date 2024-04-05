@@ -111,9 +111,9 @@ func contains(ids []primitive.ObjectID, id primitive.ObjectID) bool {
 	return false
 }
 
-var trafficSimServer *probes.TrafficSim
+/*var trafficSimServer *probes.TrafficSim
 
-var trafficSimClients []*probes.TrafficSim
+var trafficSimClients []*probes.TrafficSim*/
 
 func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thisAgent primitive.ObjectID) {
 	go func(i primitive.ObjectID, dC chan probes.ProbeData) {
@@ -134,7 +134,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 			switch agentCheck.Type {
 			case probes.ProbeType_TRAFFICSIM:
 				if agentCheck.Config.Server {
-					if trafficSimServer == nil || !trafficSimServer.Running || trafficSimServer.Errored {
+					/*if trafficSimServer == nil || !trafficSimServer.Running || trafficSimServer.Errored {
 						trafficSimServer = &probes.TrafficSim{
 							Running:     false,
 							Errored:     false,
@@ -153,12 +153,12 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 						log.Info("Starting traffic sim server...")
 						probes.TrafficSimServer(&agentCheck, trafficSimServer)
 						trafficSimServer.Running = true
-					}
+					}*/
 					continue
 				} else {
 					// todo implement call back channel for data / statistics
 
-					simClient := &probes.TrafficSim{
+					/*simClient := &probes.TrafficSim{
 						Running:     false,
 						Errored:     false,
 						DataSend:    make(chan string),
@@ -175,7 +175,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 
 					trafficSimClients = append(trafficSimClients, simClient)
 
-					probes.TrafficSimClient(&agentCheck, simClient)
+					probes.TrafficSimClient(&agentCheck, simClient)*/
 					continue
 				}
 				continue
