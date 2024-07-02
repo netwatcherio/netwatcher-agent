@@ -111,9 +111,8 @@ func contains(ids []primitive.ObjectID, id primitive.ObjectID) bool {
 	return false
 }
 
-/*var trafficSimServer *probes.TrafficSim
-
-var trafficSimClients []*probes.TrafficSim*/
+var trafficSimServer *probes.TrafficSim
+var trafficSimClients []*probes.TrafficSim
 
 func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thisAgent primitive.ObjectID) {
 	go func(i primitive.ObjectID, dC chan probes.ProbeData) {
@@ -134,7 +133,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 			switch agentCheck.Type {
 			case probes.ProbeType_TRAFFICSIM:
 				if agentCheck.Config.Server {
-					/*if trafficSimServer == nil || !trafficSimServer.Running || trafficSimServer.Errored {
+					if trafficSimServer == nil || !trafficSimServer.Running || trafficSimServer.Errored {
 						trafficSimServer = &probes.TrafficSim{
 							Running:     false,
 							Errored:     false,
@@ -142,6 +141,8 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 							DataReceive: make(chan string),
 							ThisAgent:   thisAgent,
 							OtherAgent:  primitive.ObjectID{},
+							IPAddress:   "0.0.0.0",
+							Port:        6666,
 							// todo provide list of approved agents
 						}
 
@@ -151,9 +152,9 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 						// "i think i do" - co-pilot
 						// lol the co-pilot is right... probably
 						log.Info("Starting traffic sim server...")
-						probes.TrafficSimServer(&agentCheck, trafficSimServer)
+						trafficSimServer.RunServer()
 						trafficSimServer.Running = true
-					}*/
+					}
 					continue
 				} else {
 					// todo implement call back channel for data / statistics
