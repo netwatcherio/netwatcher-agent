@@ -85,8 +85,6 @@ func (ts *TrafficSim) buildMessage(msgType TrafficSimMsgType, data TrafficSimDat
 	return string(msgBytes), nil
 }
 
-// ... [Keep the server-side functions unchanged] ...
-
 func (ts *TrafficSim) runClient() {
 	toAddr, err := net.ResolveUDPAddr("udp4", ts.IPAddress+":"+strconv.Itoa(int(ts.Port)))
 	if err != nil {
@@ -309,7 +307,7 @@ func (ts *TrafficSim) handleConnection(conn *net.UDPConn, addr *net.UDPAddr, msg
 
 	switch tsMsg.Type {
 	case TrafficSim_HELLO:
-		ts.sendACK(conn, addr, TrafficSimData{Sent: time.Now().UnixMilli()})
+		ts.sendACK(conn, addr, TrafficSimData{Sent: timeToMillis(time.Now())})
 	case TrafficSim_DATA:
 		ts.handleData(conn, addr, tsMsg.Data)
 	}
@@ -340,7 +338,7 @@ func (ts *TrafficSim) handleData(conn *net.UDPConn, addr *net.UDPAddr, data Traf
 
 	fmt.Printf("Received data from %s: Seq %d\n", addrKey, data.Seq)
 
-	ts.sendACK(conn, addr, TrafficSimData{Received: time.Now().UnixMilli(), Seq: data.Seq})
+	ts.sendACK(conn, addr, TrafficSimData{Received: timeToMillis(time.Now()), Seq: data.Seq})
 
 	if len(connection.ReceivedData) >= 10 {
 		ts.reportToController(connection)
