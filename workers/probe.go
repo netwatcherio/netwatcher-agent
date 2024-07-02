@@ -133,6 +133,15 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 
 			switch agentCheck.Type {
 			case probes.ProbeType_TRAFFICSIM:
+				checkCfg := agentCheck.Config
+				checkAddress := strings.Split(checkCfg.Target[0].Target, ":")
+
+				portNum, err := strconv.Atoi(checkAddress[1])
+				if err != nil {
+					log.Error(err)
+					break
+				}
+
 				if agentCheck.Config.Server {
 					if trafficSimServer == nil || !trafficSimServer.Running || trafficSimServer.Errored {
 						var allowedAgentsList []primitive.ObjectID
@@ -141,18 +150,10 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 							allowedAgentsList = append(allowedAgentsList, agent.Agent)
 						}
 
-						checkCfg := agentCheck.Config
-						checkAddress := strings.Split(checkCfg.Target[0].Target, ":")
-
-						portNum, err := strconv.Atoi(checkAddress[1])
-						if err != nil {
-							log.Error(err)
-							break
-						}
-
 						trafficSimServer = &probes.TrafficSim{
 							Running:       false,
 							Errored:       false,
+							IsServer:      true,
 							DataSend:      make(chan string),
 							DataReceive:   make(chan string),
 							ThisAgent:     thisAgent,
@@ -169,31 +170,29 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 						// "i think i do" - co-pilot
 						// lol the co-pilot is right... probably
 						log.Info("Starting traffic sim server...")
-						trafficSimServer.RunServer()
+						trafficSimServer.Start()
 						trafficSimServer.Running = true
 					}
 					continue
 				} else {
 					// todo implement call back channel for data / statistics
 
-					/*simClient := &probes.TrafficSim{
+					simClient := &probes.TrafficSim{
 						Running:     false,
 						Errored:     false,
 						DataSend:    make(chan string),
 						DataReceive: make(chan string),
 						Conn:        nil,
-						Stream:      nil,
 						ThisAgent:   thisAgent,
 						OtherAgent:  agentCheck.Config.Target[0].Agent,
-						IPAddress:   "",
-						Port:        "",
-						Type:        "",
+						IPAddress:   checkAddress[0],
+						Port:        int64(portNum),
 						Registered:  false,
 					}
 
 					trafficSimClients = append(trafficSimClients, simClient)
 
-					probes.TrafficSimClient(&agentCheck, simClient)*/
+					simClient.Start()
 					continue
 				}
 				continue
