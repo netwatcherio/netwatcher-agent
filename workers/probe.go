@@ -10,6 +10,7 @@ import (
 	"golang.org/x/sync/syncmap"
 	"strconv"
 	_ "strconv"
+	"strings"
 	"time"
 	_ "time"
 )
@@ -134,15 +135,31 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 			case probes.ProbeType_TRAFFICSIM:
 				if agentCheck.Config.Server {
 					if trafficSimServer == nil || !trafficSimServer.Running || trafficSimServer.Errored {
+						var allowedAgentsList []primitive.ObjectID
+
+						for _, agent := range agentCheck.Config.Target[1:] {
+							allowedAgentsList = append(allowedAgentsList, agent.Agent)
+						}
+
+						checkCfg := agentCheck.Config
+						checkAddress := strings.Split(checkCfg.Target[0].Target, ":")
+
+						portNum, err := strconv.Atoi(checkAddress[1])
+						if err != nil {
+							log.Error(err)
+							break
+						}
+
 						trafficSimServer = &probes.TrafficSim{
-							Running:     false,
-							Errored:     false,
-							DataSend:    make(chan string),
-							DataReceive: make(chan string),
-							ThisAgent:   thisAgent,
-							OtherAgent:  primitive.ObjectID{},
-							IPAddress:   "0.0.0.0",
-							Port:        6666,
+							Running:       false,
+							Errored:       false,
+							DataSend:      make(chan string),
+							DataReceive:   make(chan string),
+							ThisAgent:     thisAgent,
+							OtherAgent:    primitive.ObjectID{},
+							IPAddress:     checkAddress[0],
+							Port:          int64(portNum),
+							AllowedAgents: allowedAgentsList,
 							// todo provide list of approved agents
 						}
 
