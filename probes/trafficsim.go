@@ -214,13 +214,14 @@ func (ts *TrafficSim) receiveDataLoop() {
 			data := tsMsg.Data
 			seq := data.Seq
 			receivedTime := time.Now().UnixMilli()
-
+			ts.ClientStats.mu.Lock()
 			sentTime, ok := ts.ClientStats.SentTimes[seq]
 			if !ok {
 				log.Warn("TrafficSim: No sent time found for sequence:", seq)
 				ts.ClientStats.mu.Unlock()
 				continue
 			}
+			ts.ClientStats.mu.Unlock()
 
 			rtt := receivedTime - sentTime
 
@@ -229,7 +230,6 @@ func (ts *TrafficSim) receiveDataLoop() {
 				log.Warn("TrafficSim: Negative RTT detected. Setting to 0? RTT: ", rtt)
 				rtt = 0
 			}
-
 			ts.ClientStats.mu.Lock()
 			ts.ClientStats.ReceivedAcks++
 			ts.ClientStats.TotalRTT += rtt
