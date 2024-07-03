@@ -125,7 +125,7 @@ func (ts *TrafficSim) runClient(dC chan ProbeData) {
 }
 
 func (ts *TrafficSim) sendHello() error {
-	helloMsg, err := ts.buildMessage(TrafficSim_HELLO, TrafficSimData{Sent: time.Now().UnixNano()})
+	helloMsg, err := ts.buildMessage(TrafficSim_HELLO, TrafficSimData{Sent: time.Now().UnixMilli()})
 	if err != nil {
 		return fmt.Errorf("error building hello message: %w", err)
 	}
@@ -150,7 +150,7 @@ func (ts *TrafficSim) sendDataLoop() {
 	for {
 		time.Sleep(1 * time.Second)
 		ts.Sequence++
-		data := TrafficSimData{Sent: time.Now().UnixNano(), Seq: ts.Sequence}
+		data := TrafficSimData{Sent: time.Now().UnixMilli(), Seq: ts.Sequence}
 		dataMsg, err := ts.buildMessage(TrafficSim_DATA, data)
 		if err != nil {
 			fmt.Println("Error building data message:", err)
@@ -203,7 +203,7 @@ func (ts *TrafficSim) receiveDataLoop() {
 		if tsMsg.Type == TrafficSim_ACK {
 			data := tsMsg.Data
 			seq := data.Seq
-			rtt := time.Now().UnixNano() - data.Sent
+			rtt := time.Now().UnixMilli() - data.Sent
 
 			ts.ClientStats.mu.Lock()
 			ts.ClientStats.ReceivedAcks++
@@ -347,7 +347,7 @@ func (ts *TrafficSim) handleConnection(conn *net.UDPConn, addr *net.UDPAddr, msg
 
 	switch tsMsg.Type {
 	case TrafficSim_HELLO:
-		ts.sendACK(conn, addr, TrafficSimData{Sent: time.Now().UnixNano()})
+		ts.sendACK(conn, addr, TrafficSimData{Sent: time.Now().UnixMilli()})
 	case TrafficSim_DATA:
 		ts.handleData(conn, addr, tsMsg.Data)
 	}
@@ -378,7 +378,7 @@ func (ts *TrafficSim) handleData(conn *net.UDPConn, addr *net.UDPAddr, data Traf
 
 	fmt.Printf("Received data from %s: Seq %d\n", addrKey, data.Seq)
 
-	ts.sendACK(conn, addr, TrafficSimData{Sent: time.Now().UnixNano(), Received: time.Now().UnixNano(), Seq: data.Seq})
+	ts.sendACK(conn, addr, TrafficSimData{Sent: time.Now().UnixMilli(), Seq: data.Seq})
 
 	if len(connection.ReceivedData) >= 10 {
 		ts.reportToController(connection)
