@@ -312,14 +312,13 @@ func (ts *TrafficSim) reportClientStats(dC chan ProbeData) {
 
 func (ts *TrafficSim) runServer() {
 	ln, err := net.ListenUDP("udp4", &net.UDPAddr{Port: int(ts.Port)})
+	err = ln.SetWriteBuffer(4096)
+	err = ln.SetReadBuffer(4096)
 	if err != nil {
 		fmt.Printf("Unable to listen on :%d\n", ts.Port)
 		return
 	}
 	defer ln.Close()
-
-	err = ln.SetWriteBuffer(4096)
-	err = ln.SetReadBuffer(4096)
 
 	fmt.Printf("Listening on :%d\n", ts.Port)
 
