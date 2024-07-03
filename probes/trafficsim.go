@@ -125,7 +125,7 @@ func (ts *TrafficSim) runClient(dC chan ProbeData) {
 }
 
 func (ts *TrafficSim) sendHello() error {
-	helloMsg, err := ts.buildMessage(TrafficSim_HELLO, TrafficSimData{Sent: timeToMillis(time.Now())})
+	helloMsg, err := ts.buildMessage(TrafficSim_HELLO, TrafficSimData{Sent: time.Now().UnixNano()})
 	if err != nil {
 		return fmt.Errorf("error building hello message: %w", err)
 	}
@@ -150,7 +150,7 @@ func (ts *TrafficSim) sendDataLoop() {
 	for {
 		time.Sleep(1 * time.Second)
 		ts.Sequence++
-		data := TrafficSimData{Sent: timeToMillis(time.Now()), Seq: ts.Sequence}
+		data := TrafficSimData{Sent: time.Now().UnixNano(), Seq: ts.Sequence}
 		dataMsg, err := ts.buildMessage(TrafficSim_DATA, data)
 		if err != nil {
 			fmt.Println("Error building data message:", err)
@@ -203,18 +203,18 @@ func (ts *TrafficSim) receiveDataLoop() {
 		if tsMsg.Type == TrafficSim_ACK {
 			data := tsMsg.Data
 			seq := data.Seq
-			rtt := data.Sent - timeToMillis(time.Now())
+			rtt := time.Now().UnixNano() - data.Sent
 
 			ts.ClientStats.mu.Lock()
 			ts.ClientStats.ReceivedAcks++
 			ts.ClientStats.TotalRTT += rtt
-			ts.ClientStats.AverageRTT = ts.ClientStats.TotalRTT / int64(ts.ClientStats.ReceivedAcks)
+			ts.ClientStats.AverageRTT = ts.ClientStats.TotalRTT / int64(ts.ClientStats.ReceivedAcks) / int64(time.Millisecond)
 
 			if seq != ts.ExpectedSequence {
 				fmt.Printf("Out of sequence ACK received. Expected: %d, Got: %d\n", ts.ExpectedSequence, seq)
 				ts.ClientStats.OutOfSequence++
 			} else {
-				fmt.Printf("Received ACK: Seq %d, RTT: %d ms\n", seq, rtt)
+				fmt.Printf("Received ACK: Seq %d, RTT: %.2f ms\n", seq, float64(rtt)/float64(time.Millisecond))
 				ts.ExpectedSequence++
 			}
 			ts.ClientStats.mu.Unlock()
@@ -283,10 +283,6 @@ func (ts *TrafficSim) reportClientStats(dC chan ProbeData) {
 	}
 }
 
-func timeToMillis(t time.Time) int64 {
-	return t.UnixNano() / int64(time.Millisecond)
-}
-
 func (ts *TrafficSim) runServer() {
 	ln, err := net.ListenUDP("udp4", &net.UDPAddr{Port: int(ts.Port)})
 	if err != nil {
@@ -351,7 +347,7 @@ func (ts *TrafficSim) handleConnection(conn *net.UDPConn, addr *net.UDPAddr, msg
 
 	switch tsMsg.Type {
 	case TrafficSim_HELLO:
-		ts.sendACK(conn, addr, TrafficSimData{Sent: timeToMillis(time.Now())})
+		ts.sendACK(conn, addr, TrafficSimData{Sent: time.Now().UnixNano()})
 	case TrafficSim_DATA:
 		ts.handleData(conn, addr, tsMsg.Data)
 	}
@@ -382,7 +378,7 @@ func (ts *TrafficSim) handleData(conn *net.UDPConn, addr *net.UDPAddr, data Traf
 
 	fmt.Printf("Received data from %s: Seq %d\n", addrKey, data.Seq)
 
-	ts.sendACK(conn, addr, TrafficSimData{Sent: timeToMillis(time.Now()), Received: timeToMillis(time.Now()), Seq: data.Seq})
+	ts.sendACK(conn, addr, TrafficSimData{Sent: time.Now().UnixNano(), Received: time.Now().UnixNano(), Seq: data.Seq})
 
 	if len(connection.ReceivedData) >= 10 {
 		ts.reportToController(connection)
