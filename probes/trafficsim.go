@@ -50,6 +50,8 @@ type ClientStats struct {
 	LastReportTime time.Time     `json:"lastReportTime"`
 	AverageRTT     int64         `json:"averageRTT,omitempty"` // in milliseconds
 	TotalRTT       int64         `json:"totalRTT,omitempty"`   // in milliseconds
+	MinRTT         int64         `json:"minRTT,omitempty"`     // in milliseconds
+	MaxRTT         int64         `json:"maxRTT,omitempty"`     // in milliseconds
 	ReportInterval time.Duration `json:"reportInterval,omitempty"`
 	mu             sync.Mutex
 }
@@ -150,7 +152,8 @@ func (ts *TrafficSim) sendDataLoop() {
 	for {
 		time.Sleep(1 * time.Second)
 		ts.Sequence++
-		data := TrafficSimData{Sent: time.Now().UnixMilli(), Seq: ts.Sequence}
+		sentTime := time.Now().UnixMilli()
+		data := TrafficSimData{Sent: sentTime, Seq: ts.Sequence}
 		dataMsg, err := ts.buildMessage(TrafficSim_DATA, data)
 		if err != nil {
 			fmt.Println("Error building data message:", err)
@@ -203,18 +206,32 @@ func (ts *TrafficSim) receiveDataLoop() {
 		if tsMsg.Type == TrafficSim_ACK {
 			data := tsMsg.Data
 			seq := data.Seq
-			rtt := time.Now().UnixMilli() - data.Sent
+			receivedTime := time.Now().UnixMilli()
+			rtt := (receivedTime - data.Sent) + (data.Received - data.Sent)
+
+			// Ensure RTT is non-negative
+			if rtt < 0 {
+				rtt = 0
+			}
 
 			ts.ClientStats.mu.Lock()
 			ts.ClientStats.ReceivedAcks++
 			ts.ClientStats.TotalRTT += rtt
-			ts.ClientStats.AverageRTT = ts.ClientStats.TotalRTT / int64(ts.ClientStats.ReceivedAcks) / int64(time.Millisecond)
+			ts.ClientStats.AverageRTT = ts.ClientStats.TotalRTT / int64(ts.ClientStats.ReceivedAcks)
+
+			// Update min and max RTT
+			if ts.ClientStats.MinRTT == 0 || rtt < ts.ClientStats.MinRTT {
+				ts.ClientStats.MinRTT = rtt
+			}
+			if rtt > ts.ClientStats.MaxRTT {
+				ts.ClientStats.MaxRTT = rtt
+			}
 
 			if seq != ts.ExpectedSequence {
 				fmt.Printf("Out of sequence ACK received. Expected: %d, Got: %d\n", ts.ExpectedSequence, seq)
 				ts.ClientStats.OutOfSequence++
 			} else {
-				fmt.Printf("Received ACK: Seq %d, RTT: %.2f ms\n", seq, float64(rtt)/float64(time.Millisecond))
+				fmt.Printf("Received ACK: Seq %d, RTT: %.2f ms\n", seq, float64(rtt))
 				ts.ExpectedSequence++
 			}
 			ts.ClientStats.mu.Unlock()
@@ -238,6 +255,8 @@ func (ts *TrafficSim) reportClientStats(dC chan ProbeData) {
 			LostPackets    int
 			OutOfSequence  int
 			AverageRTT     int64
+			MinRTT         int64
+			MaxRTT         int64
 			ReportInterval time.Duration
 			LastReportTime time.Time
 		}{
@@ -246,6 +265,8 @@ func (ts *TrafficSim) reportClientStats(dC chan ProbeData) {
 			LostPackets:    ts.ClientStats.LostPackets,
 			OutOfSequence:  ts.ClientStats.OutOfSequence,
 			AverageRTT:     ts.ClientStats.AverageRTT,
+			MinRTT:         ts.ClientStats.MinRTT,
+			MaxRTT:         ts.ClientStats.MaxRTT,
 			LastReportTime: time.Now(),
 			ReportInterval: ts.ClientStats.ReportInterval,
 		}
@@ -257,6 +278,8 @@ func (ts *TrafficSim) reportClientStats(dC chan ProbeData) {
 		ts.ClientStats.OutOfSequence = 0
 		ts.ClientStats.TotalRTT = 0
 		ts.ClientStats.AverageRTT = 0
+		ts.ClientStats.MinRTT = 0
+		ts.ClientStats.MaxRTT = 0
 
 		ts.ClientStats.mu.Unlock()
 
@@ -267,6 +290,8 @@ func (ts *TrafficSim) reportClientStats(dC chan ProbeData) {
 		fmt.Printf("Lost Packets: %d\n", statsCopy.LostPackets)
 		fmt.Printf("Out of Sequence: %d\n", statsCopy.OutOfSequence)
 		fmt.Printf("Average RTT: %d ms\n", statsCopy.AverageRTT)
+		fmt.Printf("Min RTT: %d ms\n", statsCopy.MinRTT)
+		fmt.Printf("Max RTT: %d ms\n", statsCopy.MaxRTT)
 		fmt.Printf("-----------------------------------\n\n")
 
 		// Send the data to the channel
@@ -378,7 +403,12 @@ func (ts *TrafficSim) handleData(conn *net.UDPConn, addr *net.UDPAddr, data Traf
 
 	fmt.Printf("Received data from %s: Seq %d\n", addrKey, data.Seq)
 
-	ts.sendACK(conn, addr, TrafficSimData{Sent: time.Now().UnixMilli(), Seq: data.Seq})
+	ackData := TrafficSimData{
+		Sent:     data.Sent,
+		Received: time.Now().UnixMilli(),
+		Seq:      data.Seq,
+	}
+	ts.sendACK(conn, addr, ackData)
 
 	if len(connection.ReceivedData) >= 10 {
 		ts.reportToController(connection)
