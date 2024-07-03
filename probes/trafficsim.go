@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"net"
 	"strconv"
 	"sync"
@@ -94,17 +95,17 @@ func (ts *TrafficSim) buildMessage(msgType TrafficSimMsgType, data TrafficSimDat
 func (ts *TrafficSim) runClient(dC chan ProbeData) {
 	toAddr, err := net.ResolveUDPAddr("udp4", ts.IPAddress+":"+strconv.Itoa(int(ts.Port)))
 	if err != nil {
-		fmt.Printf("Could not resolve %s:%d\n", ts.IPAddress, ts.Port)
+		fmt.Printf("TrafficSim: Could not resolve %v:%d", ts.IPAddress, ts.Port)
 		return
 	}
 
-	fmt.Printf("Trying to connect to %s:%d\n", ts.IPAddress, ts.Port)
+	log.Errorf("TrafficSim: Trying to connect to %v:%d", ts.IPAddress, ts.Port)
 
 	conn, err := net.DialUDP("udp4", nil, toAddr)
 	err = conn.SetWriteBuffer(4096)
 	err = conn.SetReadBuffer(4096)
 	if err != nil {
-		fmt.Printf("Unable to connect to %s:%d\n", ts.IPAddress, ts.Port)
+		log.Errorf("TrafficSim: Unable to connect to %v:%d", ts.IPAddress, ts.Port)
 		return
 	}
 	defer conn.Close()
@@ -117,11 +118,11 @@ func (ts *TrafficSim) runClient(dC chan ProbeData) {
 	}
 
 	if err := ts.sendHello(); err != nil {
-		fmt.Println("Failed to establish connection:", err)
+		log.Error("TrafficSim: Failed to establish connection:", err)
 		return
 	}
 
-	fmt.Println("Connection established successfully")
+	log.Infof("TrafficSim: Connection established successfully to %v", ts.OtherAgent.Hex())
 
 	go ts.sendDataLoop()
 	go ts.reportClientStats(dC)
@@ -131,19 +132,22 @@ func (ts *TrafficSim) runClient(dC chan ProbeData) {
 func (ts *TrafficSim) sendHello() error {
 	helloMsg, err := ts.buildMessage(TrafficSim_HELLO, TrafficSimData{Sent: time.Now().UnixMilli()})
 	if err != nil {
-		return fmt.Errorf("error building hello message: %w", err)
+		log.Errorf("TrafficSim: error building hello message: %w", err)
+		return err
 	}
 
 	_, err = ts.Conn.Write([]byte(helloMsg))
 	if err != nil {
-		return fmt.Errorf("error sending hello message: %w", err)
+		log.Errorf("TrafficSim: error sending hello message: %w", err)
+		return err
 	}
 
 	msgBuf := make([]byte, 1024)
 	ts.Conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 	_, _, err = ts.Conn.ReadFromUDP(msgBuf)
 	if err != nil {
-		return fmt.Errorf("error reading hello response: %w", err)
+		log.Errorf("TrafficSim: error reading hello response: %w", err)
+		return err
 	}
 
 	return nil
@@ -158,13 +162,13 @@ func (ts *TrafficSim) sendDataLoop() {
 		data := TrafficSimData{Sent: sentTime, Seq: ts.Sequence}
 		dataMsg, err := ts.buildMessage(TrafficSim_DATA, data)
 		if err != nil {
-			fmt.Println("Error building data message:", err)
+			log.Error("TrafficSim: Error building data message:", err)
 			continue
 		}
 
 		_, err = ts.Conn.Write([]byte(dataMsg))
 		if err != nil {
-			fmt.Println("Error sending data message:", err)
+			log.Error("TrafficSim: Error sending data message:", err)
 			ts.ClientStats.mu.Lock()
 			ts.ClientStats.LostPackets++
 			ts.ClientStats.mu.Unlock()
@@ -184,13 +188,13 @@ func (ts *TrafficSim) receiveDataLoop() {
 		msgLen, _, err := ts.Conn.ReadFromUDP(msgBuf)
 		if err != nil {
 			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-				fmt.Println("Timeout: No response received.")
+				log.Error("TrafficSim: Timeout: No response received.")
 				ts.ClientStats.mu.Lock()
 				ts.ClientStats.LostPackets++
 				ts.ClientStats.mu.Unlock()
 				continue
 			}
-			fmt.Println("Error reading from UDP:", err)
+			log.Error("TrafficSim: Error reading from UDP:", err)
 			ts.ClientStats.mu.Lock()
 			ts.ClientStats.LostPackets++
 			ts.ExpectedSequence++
@@ -201,7 +205,7 @@ func (ts *TrafficSim) receiveDataLoop() {
 		tsMsg := TrafficSimMsg{}
 		err = json.Unmarshal(msgBuf[:msgLen], &tsMsg)
 		if err != nil {
-			fmt.Println("Error unmarshalling message:", err)
+			log.Error("TrafficSim: Error unmarshalling message:", err)
 			continue
 		}
 
@@ -230,10 +234,10 @@ func (ts *TrafficSim) receiveDataLoop() {
 			}
 
 			if seq != ts.ExpectedSequence {
-				fmt.Printf("Out of sequence ACK received. Expected: %d, Got: %d\n", ts.ExpectedSequence, seq)
+				log.Warnf("TrafficSim: Out of sequence ACK received. Expected: %d, Got: %d", ts.ExpectedSequence, seq)
 				ts.ClientStats.OutOfSequence++
 			} else {
-				fmt.Printf("Received ACK: Seq %d, RTT: %.2f ms\n", seq, float64(rtt))
+				log.Infof("TrafficSim: Received ACK from %v: Seq %d, RTT: %.2f ms", ts.OtherAgent.Hex(), seq, float64(rtt))
 				ts.ExpectedSequence++
 			}
 			ts.ClientStats.mu.Unlock()
@@ -286,15 +290,15 @@ func (ts *TrafficSim) reportClientStats(dC chan ProbeData) {
 		ts.ClientStats.mu.Unlock()
 
 		// Print the stats
-		fmt.Printf("\n--- Client Connection Statistics ---\n")
-		fmt.Printf("Sent Packets: %d\n", statsCopy.SentPackets)
-		fmt.Printf("Received ACKs: %d\n", statsCopy.ReceivedAcks)
-		fmt.Printf("Lost Packets: %d\n", statsCopy.LostPackets)
-		fmt.Printf("Out of Sequence: %d\n", statsCopy.OutOfSequence)
-		fmt.Printf("Average RTT: %d ms\n", statsCopy.AverageRTT)
-		fmt.Printf("Min RTT: %d ms\n", statsCopy.MinRTT)
-		fmt.Printf("Max RTT: %d ms\n", statsCopy.MaxRTT)
-		fmt.Printf("-----------------------------------\n\n")
+		/*fmt.Printf("--- Client Connection Statistics ---")
+		fmt.Printf("Sent Packets: %d", statsCopy.SentPackets)
+		fmt.Printf("Received ACKs: %d", statsCopy.ReceivedAcks)
+		fmt.Printf("Lost Packets: %d", statsCopy.LostPackets)
+		fmt.Printf("Out of Sequence: %d", statsCopy.OutOfSequence)
+		fmt.Printf("Average RTT: %d ms", statsCopy.AverageRTT)
+		fmt.Printf("Min RTT: %d ms", statsCopy.MinRTT)
+		fmt.Printf("Max RTT: %d ms", statsCopy.MaxRTT)
+		fmt.Printf("-----------------------------------")*/
 
 		// Send the data to the channel
 		cD := ProbeData{
@@ -315,12 +319,12 @@ func (ts *TrafficSim) runServer() {
 	err = ln.SetWriteBuffer(4096)
 	err = ln.SetReadBuffer(4096)
 	if err != nil {
-		fmt.Printf("Unable to listen on :%d\n", ts.Port)
+		log.Errorf("Unable to listen on :%d", ts.Port)
 		return
 	}
 	defer ln.Close()
 
-	fmt.Printf("Listening on :%d\n", ts.Port)
+	log.Infof("Listening on %s:%d", ts.IPAddress, ts.Port)
 
 	ts.Connections = make(map[string]*Connection)
 
@@ -336,10 +340,10 @@ func (ts *TrafficSim) listenForConnections(ln *net.UDPConn) {
 	if err != nil {
 		var netErr net.Error
 		if errors.As(err, &netErr) && netErr.Timeout() {
-			fmt.Println("Read timeout: no data received, continuing to listen...")
+			log.Error("TrafficSim: Read timeout: no data received, continuing to listen...")
 			return
 		}
-		fmt.Println("Error reading from UDP:", err)
+		log.Error("TrafficSim: Error reading from UDP:", err)
 		return
 	}
 
@@ -365,12 +369,12 @@ func (ts *TrafficSim) handleConnection(conn *net.UDPConn, addr *net.UDPAddr, msg
 	tsMsg := TrafficSimMsg{}
 	err := json.Unmarshal(msg, &tsMsg)
 	if err != nil {
-		fmt.Println("Error unmarshalling message:", err)
+		log.Error("TrafficSim: Error unmarshalling message:", err)
 		return
 	}
 
 	if !ts.isAgentAllowed(tsMsg.Src) {
-		fmt.Println("Ignoring message from unknown agent:", tsMsg.Src)
+		log.Error("TrafficSim: Ignoring message from unknown agent:", tsMsg.Src)
 		return
 	}
 
@@ -385,13 +389,13 @@ func (ts *TrafficSim) handleConnection(conn *net.UDPConn, addr *net.UDPAddr, msg
 func (ts *TrafficSim) sendACK(conn *net.UDPConn, addr *net.UDPAddr, data TrafficSimData) {
 	replyMsg, err := ts.buildMessage(TrafficSim_ACK, data)
 	if err != nil {
-		fmt.Println("Error building reply message:", err)
+		log.Error("TrafficSim: Error building reply message:", err)
 		return
 	}
 
 	_, err = conn.WriteToUDP([]byte(replyMsg), addr)
 	if err != nil {
-		fmt.Println("Error sending ACK:", err)
+		log.Error("TrafficSim: Error sending ACK:", err)
 	}
 }
 
@@ -405,7 +409,7 @@ func (ts *TrafficSim) handleData(conn *net.UDPConn, addr *net.UDPAddr, data Traf
 	connection.LastResponse = time.Now()
 	connection.ReceivedData = append(connection.ReceivedData, data)
 
-	fmt.Printf("Received data from %s: Seq %d\n", addrKey, data.Seq)
+	log.Infof("TrafficSim: Received data from %s: Seq %d", addrKey, data.Seq)
 
 	ackData := TrafficSimData{
 		Sent:     data.Sent,
@@ -423,7 +427,7 @@ func (ts *TrafficSim) handleData(conn *net.UDPConn, addr *net.UDPAddr, data Traf
 
 func (ts *TrafficSim) reportToController(connection *Connection) {
 	// todo report from server end?
-	fmt.Printf("Reporting to controller for %s: Received %d packets, Lost %d packets\n",
+	log.Warnf("TrafficSim: Reporting to controller for %s: Received %d packets, Lost %d packets",
 		connection.Addr.String(), len(connection.ReceivedData), connection.LostPackets)
 }
 
@@ -431,12 +435,14 @@ func (ts *TrafficSim) monitorConnections() {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
+	// todo fix this ?
+
 	for range ticker.C {
 		ts.ConnectionsMu.Lock()
 		for addrKey, conn := range ts.Connections {
 			if time.Since(conn.LastResponse) > 10*time.Second {
 				conn.LostPackets++
-				fmt.Printf("Packet loss detected for %s\n", addrKey)
+				log.Warnf("TrafficSim: Packet loss detected for %s", addrKey)
 				// todo trigger alert / MTR test
 			}
 		}

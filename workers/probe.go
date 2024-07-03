@@ -125,7 +125,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 
 			if agentCheckW.(ProbeWorkerS).ToRemove {
 				checkWorkers.Delete(i)
-				fmt.Println("Check with ID " + i.Hex() + " was marked for removal.")
+				log.Warn("Check with ID " + i.Hex() + " was marked for removal.")
 				break
 			}
 
@@ -165,11 +165,10 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 						}
 
 						// todo implement call back channel for data / statistics
-						log.Info("Running traffic sim server...")
+						log.Info("Running & starting traffic sim server...")
 						// lol do i have to pass this to the go func ??
 						// "i think i do" - co-pilot
 						// lol the co-pilot is right... probably
-						log.Info("Starting traffic sim server...")
 						trafficSimServer.Start(nil)
 						trafficSimServer.Running = true
 					}
@@ -196,14 +195,14 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 				}
 
 			case probes.ProbeType_SYSTEMINFO:
-				log.Info("Running system test")
+				log.Info("SystemInfo: Running system hardware usage test")
 				if agentCheck.Config.Interval <= 0 {
 					agentCheck.Config.Interval = 1
 				}
 
 				mtr, err := probes.SystemInfo()
 				if err != nil {
-					fmt.Println(err)
+					log.Error(err)
 				}
 
 				cD := probes.ProbeData{
@@ -211,14 +210,14 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 					Data:    mtr,
 				}
 
-				fmt.Println("Sending apiClient to the channel (Sysinfo) for ", agentCheck.Config.Interval, "...")
+				//fmt.Println("Sending apiClient to the channel (Sysinfo) for ", agentCheck.Config.Interval, "...")
 				dC <- cD
-				fmt.Println("sleeping for " + strconv.Itoa(agentCheck.Config.Interval) + " minutes")
+				//fmt.Println("sleeping for " + strconv.Itoa(agentCheck.Config.Interval) + " minutes")
 				time.Sleep(time.Duration(agentCheck.Config.Interval) * time.Minute)
 				// todo push
 				continue
 			case probes.ProbeType_MTR:
-				log.Info("Running mtr test for ", agentCheck.Config.Target, "...")
+				log.Info("MTR: Running test for ", agentCheck.Config.Target, "...")
 				mtr, err := probes.Mtr(&agentCheck, false)
 				if err != nil {
 					fmt.Println(err)
@@ -235,45 +234,45 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 					Data:      mtr,
 				}
 
-				fmt.Println("Sending apiClient to the channel (MTR) for ", agentCheck.Config.Interval, "...")
+				//fmt.Println("Sending apiClient to the channel (MTR) for ", agentCheck.Config.Interval, "...")
 				dC <- cD
-				fmt.Println("sleeping for " + strconv.Itoa(agentCheck.Config.Interval) + " minutes")
+				//fmt.Println("sleeping for " + strconv.Itoa(agentCheck.Config.Interval) + " minutes")
 				time.Sleep(time.Duration(agentCheck.Config.Interval) * time.Minute)
 				// todo push
 				continue
-			case probes.ProbeType_RPERF:
-				// if check says its a server, start a iperf server based on the bind and port provided in target
-				//todo
-				//make this continue to run, however, make it check if the latest version of the check
-				//apiClient contains it, if not, then break out of this thread
+			/*case probes.ProbeType_RPERF:
+			// if check says its a server, start a iperf server based on the bind and port provided in target
+			//todo
+			//make this continue to run, however, make it check if the latest version of the check
+			//apiClient contains it, if not, then break out of this thread
 
-				fmt.Println("Running rperf test for ", agentCheck.Config.Target, "...")
-				rperf := probes.RPerfResults{}
+			fmt.Println("Running rperf test for ", agentCheck.Config.Target, "...")
+			rperf := probes.RPerfResults{}
 
-				if agentCheck.Config.Server {
-					err := rperf.Run(&agentCheck)
-					if err != nil {
-						fmt.Println(err)
-						fmt.Println("exiting loop, please check firewall, and recreate check, you may need to reboot")
-						time.Sleep(time.Second * 30)
-					}
-				} else {
-					err := rperf.Check(&agentCheck)
-					if err != nil {
-						fmt.Println(err)
-						fmt.Println("something went wrong processing rperf... sleeping for 30 seconds")
-						time.Sleep(time.Second * 30)
-					}
-
-					cD := probes.ProbeData{
-						ProbeID: agentCheck.ID,
-						Data:    rperf,
-					}
-
-					fmt.Println("Sending apiClient to the channel (RPERF) for ", agentCheck.Config.Target, "...")
-					dC <- cD
+			if agentCheck.Config.Server {
+				err := rperf.Run(&agentCheck)
+				if err != nil {
+					fmt.Println(err)
+					fmt.Println("exiting loop, please check firewall, and recreate check, you may need to reboot")
+					time.Sleep(time.Second * 30)
 				}
-				continue
+			} else {
+				err := rperf.Check(&agentCheck)
+				if err != nil {
+					fmt.Println(err)
+					fmt.Println("something went wrong processing rperf... sleeping for 30 seconds")
+					time.Sleep(time.Second * 30)
+				}
+
+				cD := probes.ProbeData{
+					ProbeID: agentCheck.ID,
+					Data:    rperf,
+				}
+
+				//fmt.Println("Sending apiClient to the channel (RPERF) for ", agentCheck.Config.Target, "...")
+				dC <- cD
+			}
+			continue*/
 			case probes.ProbeType_SPEEDTEST:
 				// todo make this dynamic and on demand
 				/*if agentCheck.Config.Pending {
@@ -306,7 +305,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 				}*/
 				continue
 			case probes.ProbeType_PING:
-				log.Info("Running ping test for " + agentCheck.Config.Target[0].Target + "...")
+				log.Infof("Ping: Running test for %v...", agentCheck.Config.Target[0].Target)
 
 				// todo find target that matches ping host for target field, and run mtr against it
 				probe, err := findMatchingMTRProbe(agentCheck)
@@ -326,7 +325,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 				//}
 				continue
 			case probes.ProbeType_NETWORKINFO:
-				fmt.Println("Checking networking information...")
+				log.Info("NetInfo: Checking networking information...")
 				net, err := probes.NetworkInfo()
 				if err != nil {
 					fmt.Println(err)
