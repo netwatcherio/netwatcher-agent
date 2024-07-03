@@ -101,6 +101,8 @@ func (ts *TrafficSim) runClient(dC chan ProbeData) {
 	fmt.Printf("Trying to connect to %s:%d\n", ts.IPAddress, ts.Port)
 
 	conn, err := net.DialUDP("udp4", nil, toAddr)
+	err = conn.SetWriteBuffer(4096)
+	err = conn.SetReadBuffer(4096)
 	if err != nil {
 		fmt.Printf("Unable to connect to %s:%d\n", ts.IPAddress, ts.Port)
 		return
@@ -315,6 +317,9 @@ func (ts *TrafficSim) runServer() {
 		return
 	}
 	defer ln.Close()
+
+	err = ln.SetWriteBuffer(4096)
+	err = ln.SetReadBuffer(4096)
 
 	fmt.Printf("Listening on :%d\n", ts.Port)
 
