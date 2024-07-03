@@ -13,22 +13,26 @@ import (
 )
 
 type TrafficSim struct {
-	Running       bool
-	Errored       bool
-	DataSend      chan string
-	DataReceive   chan string
-	ThisAgent     primitive.ObjectID
-	OtherAgent    primitive.ObjectID
-	Conn          *net.UDPConn
-	IPAddress     string
-	Port          int64
-	IsServer      bool
-	LastResponse  time.Time
-	Registered    bool
-	AllowedAgents []primitive.ObjectID
-	Connections   map[string]*Connection
-	ConnectionsMu sync.RWMutex
-	ClientStats   *ClientStats
+	Running          bool
+	Errored          bool
+	DataSend         chan string
+	DataReceive      chan string
+	ThisAgent        primitive.ObjectID
+	OtherAgent       primitive.ObjectID
+	Conn             *net.UDPConn
+	IPAddress        string
+	Port             int64
+	IsServer         bool
+	LastResponse     time.Time
+	Registered       bool
+	AllowedAgents    []primitive.ObjectID
+	Connections      map[string]*Connection
+	ConnectionsMu    sync.RWMutex
+	ClientStats      *ClientStats
+	Sequence         int
+	ExpectedSequence int
+	DataChan         *chan ProbeData
+	Probe            primitive.ObjectID
 }
 
 type Connection struct {
@@ -39,14 +43,14 @@ type Connection struct {
 }
 
 type ClientStats struct {
-	SentPackets    int
-	ReceivedAcks   int
-	LostPackets    int
-	OutOfSequence  int
-	LastReportTime time.Time
-	AverageRTT     int64 // in milliseconds
-	TotalRTT       int64 // in milliseconds
-	ReportInterval time.Duration
+	SentPackets    int           `json:"sentPackets,omitempty"`
+	ReceivedAcks   int           `json:"receivedAcks,omitempty"`
+	LostPackets    int           `json:"lostPackets,omitempty"`
+	OutOfSequence  int           `json:"outOfSequence,omitempty"`
+	LastReportTime time.Time     `json:"lastReportTime"`
+	AverageRTT     int64         `json:"averageRTT,omitempty"` // in milliseconds
+	TotalRTT       int64         `json:"totalRTT,omitempty"`   // in milliseconds
+	ReportInterval time.Duration `json:"reportInterval,omitempty"`
 	mu             sync.Mutex
 }
 
@@ -85,7 +89,7 @@ func (ts *TrafficSim) buildMessage(msgType TrafficSimMsgType, data TrafficSimDat
 	return string(msgBytes), nil
 }
 
-func (ts *TrafficSim) runClient() {
+func (ts *TrafficSim) runClient(dC chan ProbeData) {
 	toAddr, err := net.ResolveUDPAddr("udp4", ts.IPAddress+":"+strconv.Itoa(int(ts.Port)))
 	if err != nil {
 		fmt.Printf("Could not resolve %s:%d\n", ts.IPAddress, ts.Port)
@@ -101,10 +105,11 @@ func (ts *TrafficSim) runClient() {
 	}
 	defer conn.Close()
 
+	// define client stat interval
 	ts.Conn = conn
 	ts.ClientStats = &ClientStats{
 		LastReportTime: time.Now(),
-		ReportInterval: 10 * time.Second,
+		ReportInterval: 15 * time.Second,
 	}
 
 	if err := ts.sendHello(); err != nil {
@@ -115,7 +120,7 @@ func (ts *TrafficSim) runClient() {
 	fmt.Println("Connection established successfully")
 
 	go ts.sendDataLoop()
-	go ts.reportClientStats()
+	go ts.reportClientStats(dC)
 	ts.receiveDataLoop()
 }
 
@@ -141,11 +146,11 @@ func (ts *TrafficSim) sendHello() error {
 }
 
 func (ts *TrafficSim) sendDataLoop() {
-	seq := 0
+	ts.Sequence = 0
 	for {
 		time.Sleep(1 * time.Second)
-		seq++
-		data := TrafficSimData{Sent: timeToMillis(time.Now()), Seq: seq}
+		ts.Sequence++
+		data := TrafficSimData{Sent: timeToMillis(time.Now()), Seq: ts.Sequence}
 		dataMsg, err := ts.buildMessage(TrafficSim_DATA, data)
 		if err != nil {
 			fmt.Println("Error building data message:", err)
@@ -167,7 +172,7 @@ func (ts *TrafficSim) sendDataLoop() {
 }
 
 func (ts *TrafficSim) receiveDataLoop() {
-	expectedSeq := 1
+	ts.ExpectedSequence = 1
 	for {
 		msgBuf := make([]byte, 1024)
 		ts.Conn.SetReadDeadline(time.Now().Add(5 * time.Second))
@@ -181,6 +186,10 @@ func (ts *TrafficSim) receiveDataLoop() {
 				continue
 			}
 			fmt.Println("Error reading from UDP:", err)
+			ts.ClientStats.mu.Lock()
+			ts.ClientStats.LostPackets++
+			ts.ExpectedSequence++
+			ts.ClientStats.mu.Unlock()
 			continue
 		}
 
@@ -194,19 +203,19 @@ func (ts *TrafficSim) receiveDataLoop() {
 		if tsMsg.Type == TrafficSim_ACK {
 			data := tsMsg.Data
 			seq := data.Seq
-			rtt := timeToMillis(time.Now()) - data.Sent
+			rtt := data.Sent - timeToMillis(time.Now())
 
 			ts.ClientStats.mu.Lock()
 			ts.ClientStats.ReceivedAcks++
 			ts.ClientStats.TotalRTT += rtt
 			ts.ClientStats.AverageRTT = ts.ClientStats.TotalRTT / int64(ts.ClientStats.ReceivedAcks)
 
-			if seq != expectedSeq {
-				fmt.Printf("Out of sequence ACK received. Expected: %d, Got: %d\n", expectedSeq, seq)
+			if seq != ts.ExpectedSequence {
+				fmt.Printf("Out of sequence ACK received. Expected: %d, Got: %d\n", ts.ExpectedSequence, seq)
 				ts.ClientStats.OutOfSequence++
 			} else {
 				fmt.Printf("Received ACK: Seq %d, RTT: %d ms\n", seq, rtt)
-				expectedSeq++
+				ts.ExpectedSequence++
 			}
 			ts.ClientStats.mu.Unlock()
 
@@ -215,27 +224,60 @@ func (ts *TrafficSim) receiveDataLoop() {
 	}
 }
 
-func (ts *TrafficSim) reportClientStats() {
+func (ts *TrafficSim) reportClientStats(dC chan ProbeData) {
 	ticker := time.NewTicker(ts.ClientStats.ReportInterval)
 	defer ticker.Stop()
 
 	for range ticker.C {
 		ts.ClientStats.mu.Lock()
-		fmt.Printf("\n--- Client Connection Statistics ---\n")
-		fmt.Printf("Sent Packets: %d\n", ts.ClientStats.SentPackets)
-		fmt.Printf("Received ACKs: %d\n", ts.ClientStats.ReceivedAcks)
-		fmt.Printf("Lost Packets: %d\n", ts.ClientStats.LostPackets)
-		fmt.Printf("Out of Sequence: %d\n", ts.ClientStats.OutOfSequence)
-		fmt.Printf("Average RTT: %d ms\n", ts.ClientStats.AverageRTT)
-		fmt.Printf("-----------------------------------\n\n")
 
+		// Create a new struct with only the data we need, excluding the mutex
+		statsCopy := struct {
+			SentPackets    int
+			ReceivedAcks   int
+			LostPackets    int
+			OutOfSequence  int
+			AverageRTT     int64
+			ReportInterval time.Duration
+		}{
+			SentPackets:    ts.ClientStats.SentPackets,
+			ReceivedAcks:   ts.ClientStats.ReceivedAcks,
+			LostPackets:    ts.ClientStats.LostPackets,
+			OutOfSequence:  ts.ClientStats.OutOfSequence,
+			AverageRTT:     ts.ClientStats.AverageRTT,
+			ReportInterval: ts.ClientStats.ReportInterval,
+		}
+
+		// Reset the stats
 		ts.ClientStats.SentPackets = 0
 		ts.ClientStats.ReceivedAcks = 0
 		ts.ClientStats.LostPackets = 0
 		ts.ClientStats.OutOfSequence = 0
 		ts.ClientStats.TotalRTT = 0
 		ts.ClientStats.AverageRTT = 0
+
 		ts.ClientStats.mu.Unlock()
+
+		// Print the stats
+		fmt.Printf("\n--- Client Connection Statistics ---\n")
+		fmt.Printf("Sent Packets: %d\n", statsCopy.SentPackets)
+		fmt.Printf("Received ACKs: %d\n", statsCopy.ReceivedAcks)
+		fmt.Printf("Lost Packets: %d\n", statsCopy.LostPackets)
+		fmt.Printf("Out of Sequence: %d\n", statsCopy.OutOfSequence)
+		fmt.Printf("Average RTT: %d ms\n", statsCopy.AverageRTT)
+		fmt.Printf("-----------------------------------\n\n")
+
+		// Send the data to the channel
+		cD := ProbeData{
+			ProbeID:   ts.Probe,
+			Triggered: false,
+			Data:      statsCopy,
+		}
+		dC <- cD
+
+		// Reset sequence numbers outside of the lock
+		ts.Sequence = 0
+		ts.ExpectedSequence = 1
 	}
 }
 
@@ -243,7 +285,7 @@ func timeToMillis(t time.Time) int64 {
 	return t.UnixNano() / int64(time.Millisecond)
 }
 
-func (ts *TrafficSim) RunServer() {
+func (ts *TrafficSim) runServer() {
 	ln, err := net.ListenUDP("udp4", &net.UDPAddr{Port: int(ts.Port)})
 	if err != nil {
 		fmt.Printf("Unable to listen on :%d\n", ts.Port)
@@ -338,7 +380,7 @@ func (ts *TrafficSim) handleData(conn *net.UDPConn, addr *net.UDPAddr, data Traf
 
 	fmt.Printf("Received data from %s: Seq %d\n", addrKey, data.Seq)
 
-	ts.sendACK(conn, addr, TrafficSimData{Received: timeToMillis(time.Now()), Seq: data.Seq})
+	ts.sendACK(conn, addr, TrafficSimData{Sent: timeToMillis(time.Now()), Received: timeToMillis(time.Now()), Seq: data.Seq})
 
 	if len(connection.ReceivedData) >= 10 {
 		ts.reportToController(connection)
@@ -348,6 +390,7 @@ func (ts *TrafficSim) handleData(conn *net.UDPConn, addr *net.UDPAddr, data Traf
 }
 
 func (ts *TrafficSim) reportToController(connection *Connection) {
+	// todo report from server end?
 	fmt.Printf("Reporting to controller for %s: Received %d packets, Lost %d packets\n",
 		connection.Addr.String(), len(connection.ReceivedData), connection.LostPackets)
 }
@@ -362,6 +405,7 @@ func (ts *TrafficSim) monitorConnections() {
 			if time.Since(conn.LastResponse) > 10*time.Second {
 				conn.LostPackets++
 				fmt.Printf("Packet loss detected for %s\n", addrKey)
+				// todo trigger alert / MTR test
 			}
 		}
 		ts.ConnectionsMu.Unlock()
@@ -377,11 +421,11 @@ func (ts *TrafficSim) isAgentAllowed(agentID primitive.ObjectID) bool {
 	return false
 }
 
-func (ts *TrafficSim) Start() {
+func (ts *TrafficSim) Start(dC chan ProbeData) {
 	if ts.IsServer {
 		go ts.monitorConnections()
-		ts.RunServer()
+		ts.runServer()
 	} else {
-		ts.runClient()
+		ts.runClient(dC)
 	}
 }

@@ -154,13 +154,12 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 							Running:       false,
 							Errored:       false,
 							IsServer:      true,
-							DataSend:      make(chan string),
-							DataReceive:   make(chan string),
 							ThisAgent:     thisAgent,
 							OtherAgent:    primitive.ObjectID{},
 							IPAddress:     checkAddress[0],
 							Port:          int64(portNum),
 							AllowedAgents: allowedAgentsList,
+							Probe:         agentCheck.ID,
 							// todo provide list of approved agents
 						}
 
@@ -170,7 +169,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 						// "i think i do" - co-pilot
 						// lol the co-pilot is right... probably
 						log.Info("Starting traffic sim server...")
-						trafficSimServer.Start()
+						trafficSimServer.Start(nil)
 						trafficSimServer.Running = true
 					}
 					continue
@@ -178,24 +177,22 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 					// todo implement call back channel for data / statistics
 
 					simClient := &probes.TrafficSim{
-						Running:     false,
-						Errored:     false,
-						DataSend:    make(chan string),
-						DataReceive: make(chan string),
-						Conn:        nil,
-						ThisAgent:   thisAgent,
-						OtherAgent:  agentCheck.Config.Target[0].Agent,
-						IPAddress:   checkAddress[0],
-						Port:        int64(portNum),
-						Registered:  false,
+						Running:    false,
+						Errored:    false,
+						Conn:       nil,
+						ThisAgent:  thisAgent,
+						OtherAgent: agentCheck.Config.Target[0].Agent,
+						IPAddress:  checkAddress[0],
+						Port:       int64(portNum),
+						Registered: false,
+						Probe:      agentCheck.ID,
 					}
 
 					trafficSimClients = append(trafficSimClients, simClient)
 
-					simClient.Start()
+					simClient.Start(dC)
 					continue
 				}
-				continue
 
 			case probes.ProbeType_SYSTEMINFO:
 				log.Info("Running system test")
