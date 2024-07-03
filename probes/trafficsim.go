@@ -54,6 +54,8 @@ type ClientStats struct {
 	MinRTT         int64         `json:"minRTT,omitempty"`     // in milliseconds
 	MaxRTT         int64         `json:"maxRTT,omitempty"`     // in milliseconds
 	ReportInterval time.Duration `json:"reportInterval,omitempty"`
+	SentTimes      map[int]int64 `json:"-"`
+	ReceivedTimes  map[int]int64 `json:"-"`
 	mu             sync.Mutex
 }
 
@@ -153,6 +155,7 @@ func (ts *TrafficSim) sendHello() error {
 
 func (ts *TrafficSim) sendDataLoop() {
 	ts.Sequence = 0
+	ts.ClientStats.SentTimes = make(map[int]int64)
 	for {
 		time.Sleep(1 * time.Second)
 		ts.Sequence++
@@ -173,6 +176,7 @@ func (ts *TrafficSim) sendDataLoop() {
 		} else {
 			ts.ClientStats.mu.Lock()
 			ts.ClientStats.SentPackets++
+			ts.ClientStats.SentTimes[ts.Sequence] = sentTime
 			ts.ClientStats.mu.Unlock()
 		}
 	}
@@ -200,6 +204,8 @@ func (ts *TrafficSim) receiveDataLoop() {
 			continue
 		}
 
+		receivedTime := time.Now().UnixMilli()
+
 		tsMsg := TrafficSimMsg{}
 		err = json.Unmarshal(msgBuf[:msgLen], &tsMsg)
 		if err != nil {
@@ -210,8 +216,17 @@ func (ts *TrafficSim) receiveDataLoop() {
 		if tsMsg.Type == TrafficSim_ACK {
 			data := tsMsg.Data
 			seq := data.Seq
-			receivedTime := time.Now().UnixMilli()
-			rtt := (receivedTime - data.Sent) + (data.Received - data.Sent)
+
+			ts.ClientStats.mu.Lock()
+			sentTime, ok := ts.ClientStats.SentTimes[seq]
+			if !ok {
+				log.Warn("TrafficSim: No sent time found for sequence:", seq)
+				ts.ClientStats.mu.Unlock()
+				continue
+			}
+			delete(ts.ClientStats.SentTimes, seq) // Clean up stored time
+
+			rtt := receivedTime - sentTime
 
 			// Ensure RTT is non-negative
 			if rtt < 0 {
@@ -409,13 +424,11 @@ func (ts *TrafficSim) handleData(conn *net.UDPConn, addr *net.UDPAddr, data Traf
 	log.Infof("TrafficSim: Received data from %s: Seq %d", addrKey, data.Seq)
 
 	ackData := TrafficSimData{
-		Sent:     data.Sent,
-		Received: time.Now().UnixMilli(),
-		Seq:      data.Seq,
+		Seq: data.Seq,
 	}
 	ts.sendACK(conn, addr, ackData)
 
-	if len(connection.ReceivedData) >= 10 {
+	if len(connection.ReceivedData) >= 15 {
 		ts.reportToController(connection)
 		connection.ReceivedData = nil
 		connection.LostPackets = 0
