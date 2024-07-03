@@ -239,12 +239,14 @@ func (ts *TrafficSim) reportClientStats(dC chan ProbeData) {
 			OutOfSequence  int
 			AverageRTT     int64
 			ReportInterval time.Duration
+			LastReportTime time.Time
 		}{
 			SentPackets:    ts.ClientStats.SentPackets,
 			ReceivedAcks:   ts.ClientStats.ReceivedAcks,
 			LostPackets:    ts.ClientStats.LostPackets,
 			OutOfSequence:  ts.ClientStats.OutOfSequence,
 			AverageRTT:     ts.ClientStats.AverageRTT,
+			LastReportTime: time.Now(),
 			ReportInterval: ts.ClientStats.ReportInterval,
 		}
 
