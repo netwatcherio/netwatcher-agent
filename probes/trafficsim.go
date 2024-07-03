@@ -215,7 +215,7 @@ func (ts *TrafficSim) receiveDataLoop() {
 
 			// Ensure RTT is non-negative
 			if rtt < 0 {
-				log.Warn("TrafficSim: Negative RTT detected. Setting to 0?")
+				log.Warn("TrafficSim: Negative RTT detected. Setting to 0? RTT: ", rtt)
 				rtt = 0
 			}
 
