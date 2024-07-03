@@ -102,8 +102,6 @@ func (ts *TrafficSim) runClient(dC chan ProbeData) {
 	log.Errorf("TrafficSim: Trying to connect to %v:%d", ts.IPAddress, ts.Port)
 
 	conn, err := net.DialUDP("udp4", nil, toAddr)
-	err = conn.SetWriteBuffer(4096)
-	err = conn.SetReadBuffer(4096)
 	if err != nil {
 		log.Errorf("TrafficSim: Unable to connect to %v:%d", ts.IPAddress, ts.Port)
 		return
@@ -142,7 +140,7 @@ func (ts *TrafficSim) sendHello() error {
 		return err
 	}
 
-	msgBuf := make([]byte, 1024)
+	msgBuf := make([]byte, 256)
 	ts.Conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 	_, _, err = ts.Conn.ReadFromUDP(msgBuf)
 	if err != nil {
@@ -183,7 +181,7 @@ func (ts *TrafficSim) sendDataLoop() {
 func (ts *TrafficSim) receiveDataLoop() {
 	ts.ExpectedSequence = 1
 	for {
-		msgBuf := make([]byte, 1024)
+		msgBuf := make([]byte, 256)
 		ts.Conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 		msgLen, _, err := ts.Conn.ReadFromUDP(msgBuf)
 		if err != nil {
@@ -217,6 +215,7 @@ func (ts *TrafficSim) receiveDataLoop() {
 
 			// Ensure RTT is non-negative
 			if rtt < 0 {
+				log.Warn("TrafficSim: Negative RTT detected. Setting to 0?")
 				rtt = 0
 			}
 
@@ -316,8 +315,6 @@ func (ts *TrafficSim) reportClientStats(dC chan ProbeData) {
 
 func (ts *TrafficSim) runServer() {
 	ln, err := net.ListenUDP("udp4", &net.UDPAddr{Port: int(ts.Port)})
-	err = ln.SetWriteBuffer(4096)
-	err = ln.SetReadBuffer(4096)
 	if err != nil {
 		log.Errorf("Unable to listen on :%d", ts.Port)
 		return
@@ -334,7 +331,7 @@ func (ts *TrafficSim) runServer() {
 }
 
 func (ts *TrafficSim) listenForConnections(ln *net.UDPConn) {
-	msgBuf := make([]byte, 1024)
+	msgBuf := make([]byte, 256)
 	ln.SetReadDeadline(time.Now().Add(5 * time.Second))
 	rcvLen, addr, err := ln.ReadFromUDP(msgBuf)
 	if err != nil {
