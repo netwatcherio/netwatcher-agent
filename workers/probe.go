@@ -141,6 +141,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 					log.Error(err)
 					break
 				}
+				// todo update the allowed agents on the fly!!
 
 				if agentCheck.Config.Server {
 					if trafficSimServer == nil || !trafficSimServer.Running || trafficSimServer.Errored {
