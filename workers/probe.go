@@ -80,6 +80,16 @@ func InitProbeWorker(checkChan chan []probes.Probe, dataChan chan probes.ProbeDa
 				} else {
 					//checkWorkers.Swap(ad.ID, ad)
 					log.Infof("NOT Swapping probe with existing %s", ad.ID.Hex())
+
+					if ad.Type == probes.ProbeType_TRAFFICSIM && ad.Config.Server {
+						var allowedAgentsList []primitive.ObjectID
+
+						for _, agent := range ad.Config.Target[1:] {
+							allowedAgentsList = append(allowedAgentsList, agent.Agent)
+						}
+
+						updateAllowedAgents(trafficSimServer, allowedAgentsList)
+					}
 				}
 
 				newIds = append(newIds, ad.ID)
