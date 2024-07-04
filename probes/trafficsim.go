@@ -247,7 +247,7 @@ func (ts *TrafficSim) receiveDataLoop() {
 				log.Warnf("TrafficSim: Out of sequence ACK received. Expected: %d, Got: %d", ts.ExpectedSequence, seq)
 				ts.ClientStats.OutOfSequence++
 			} else {
-				log.Infof("TrafficSim: Received ACK from %v: Seq %d, RTT: %.2f ms", ts.OtherAgent.Hex(), seq, float64(rtt))
+				// log.Infof("TrafficSim: Received ACK from %v: Seq %d, RTT: %.2f ms", ts.OtherAgent.Hex(), seq, float64(rtt))
 				ts.ExpectedSequence++
 			}
 			ts.ClientStats.mu.Unlock()

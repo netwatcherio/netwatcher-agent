@@ -217,7 +217,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 				// todo push
 				continue
 			case probes.ProbeType_MTR:
-				log.Info("MTR: Running test for ", agentCheck.Config.Target, "...")
+				log.Info("MTR: Running test for ", agentCheck.Config.Target[0].Target, "...")
 				mtr, err := probes.Mtr(&agentCheck, false)
 				if err != nil {
 					fmt.Println(err)
