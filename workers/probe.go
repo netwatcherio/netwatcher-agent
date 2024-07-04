@@ -163,8 +163,8 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 						}
 
 						log.Info("Running & starting traffic sim server...")
-						trafficSimServer.Start(nil)
 						trafficSimServer.Running = true
+						trafficSimServer.Start(nil)
 					} else {
 						// Update the allowed agents list dynamically
 						updateAllowedAgents(trafficSimServer, allowedAgentsList)
@@ -185,6 +185,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 					}
 
 					trafficSimClients = append(trafficSimClients, simClient)
+					simClient.Running = true
 					simClient.Start(dC)
 					continue
 				}
