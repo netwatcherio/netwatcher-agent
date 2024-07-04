@@ -131,13 +131,13 @@ func (ts *TrafficSim) runClient(dC chan ProbeData) {
 func (ts *TrafficSim) sendHello() error {
 	helloMsg, err := ts.buildMessage(TrafficSim_HELLO, TrafficSimData{Sent: time.Now().UnixMilli()})
 	if err != nil {
-		log.Errorf("TrafficSim: error building hello message: %w", err)
+		log.Errorf("TrafficSim: error building hello message: %v", err)
 		return err
 	}
 
 	_, err = ts.Conn.Write([]byte(helloMsg))
 	if err != nil {
-		log.Errorf("TrafficSim: error sending hello message: %w", err)
+		log.Errorf("TrafficSim: error sending hello message: %v", err)
 		return err
 	}
 
@@ -145,7 +145,7 @@ func (ts *TrafficSim) sendHello() error {
 	ts.Conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 	_, _, err = ts.Conn.ReadFromUDP(msgBuf)
 	if err != nil {
-		log.Errorf("TrafficSim: error reading hello response: %w", err)
+		log.Errorf("TrafficSim: error reading hello response: %v", err)
 		return err
 	}
 
