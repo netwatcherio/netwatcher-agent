@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"time"
@@ -76,70 +76,63 @@ type MtrResult struct {
 
 // Mtr run the check for mtr, take input from checkdata for the test, and update the mtrresult object
 func Mtr(cd *Probe, triggered bool) (MtrResult, error) {
-	osDetect := runtime.GOOS
 	var mtrResult MtrResult
 	mtrResult.StartTimestamp = time.Now()
 
-	//todo convert this to use trippycli??
-
-	/*var cmdStr string*/
-	if runtime.GOARCH == "amd64" {
-		// Load your x86-specific external library here
-	} else if runtime.GOARCH == "arm64" {
-		// Load your ARM-specific external library here
-	} else {
-		fmt.Println("Unsupported architecture for MTR test")
-	}
-
-	/*cmdStr += " " + cd.Config.Target[0].Target + " -z --show-ips -o LDRSBAWVGJMXI --json"*/
-
-	ctx := context.Background()
-
 	triggeredCount := 5
-
 	if triggered {
 		triggeredCount = 15
 	}
-	var cmd *exec.Cmd
-	switch osDetect {
-	case "windows":
-		args := []string{
-			"--icmp",
-			"--mode", "json",
-			"--multipath-strategy", "classic",
-			"--dns-resolve-method", "cloudflare",
-			"--report-cycles", strconv.Itoa(triggeredCount),
-			"--dns-lookup-as-info", cd.Config.Target[0].Target,
-		}
 
-		// Construct the command with context and arguments
-		cmd = exec.CommandContext(ctx, "./lib/trip_windows-x86_64.exe", args...)
-		break
+	trippyPath := filepath.Join(".", "lib")
+	var trippyBinary string
+
+	switch runtime.GOOS {
+	case "windows":
+		if runtime.GOARCH == "amd64" {
+			trippyBinary = "trippy-x86_64-pc-windows-msvc.exe"
+		} else {
+			trippyBinary = "trippy-i686-pc-windows-msvc.exe"
+		}
 	case "darwin":
-		// mtr needs to be installed manually currently
-		/*args := []string{"-c", "./lib/mtr_darwin " + cd.Config.Target[0].Target + " -z --show-ips -o LDRSBAWVGJMXI --json"}
-		cmd = exec.CommandContext(ctx, "/bin/bash", args...)*/
-		args := []string{"-c", "./lib/trip_darwin --icmp --mode json --multipath-strategy paris --dns-resolve-method cloudflare --report-cycles " + strconv.Itoa(triggeredCount) + " --dns-lookup-as-info " + cd.Config.Target[0].Target}
-		cmd = exec.CommandContext(ctx, "/bin/bash", args...)
-		break
+		trippyBinary = "trip"
 	case "linux":
-		// mtr needs to be installed manually currently
-		/*args := []string{"-c", "mtr " + cd.Config.Target[0].Target + " -z --show-ips -o LDRSBAWVGJMXI --json"}
-		cmd = exec.CommandContext(ctx, "/bin/bash", args...)*/
-		args := []string{"-c", "./lib/trip_linux-x86_64 --icmp --mode json --multipath-strategy paris --dns-resolve-method cloudflare --report-cycles " + strconv.Itoa(triggeredCount) + " --dns-lookup-as-info " + cd.Config.Target[0].Target}
-		cmd = exec.CommandContext(ctx, "/bin/bash", args...)
-		break
+		if runtime.GOARCH == "amd64" {
+			trippyBinary = "trip"
+		} else if runtime.GOARCH == "arm64" {
+			trippyBinary = "trip"
+		} else {
+			return mtrResult, fmt.Errorf("unsupported Linux architecture: %s", runtime.GOARCH)
+		}
 	default:
-		log.Fatalf("Unknown OS")
+		return mtrResult, fmt.Errorf("unsupported OS: %s", runtime.GOOS)
 	}
 
-	var cancel context.CancelFunc
-	// timeout after 60 seconds
-	ctx, cancel = context.WithTimeout(context.Background(), time.Duration(60)*time.Second)
+	trippyPath = filepath.Join(trippyPath, trippyBinary)
+
+	args := []string{
+		"--icmp",
+		"--mode json",
+		"--multipath-strategy dublin",
+		"--dns-resolve-method cloudflare",
+		"--dns-lookup-as-info",
+		"--report-cycles " + strconv.Itoa(triggeredCount),
+		cd.Config.Target[0].Target,
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(60)*time.Second)
 	defer cancel()
 
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		cmd = exec.CommandContext(ctx, trippyPath, args...)
+	} else {
+		// For Linux and macOS, use /bin/bash
+		shellArgs := append([]string{"-c", trippyPath + " --icmp --mode json --multipath-strategy classic --dns-resolve-method cloudflare --report-cycles " + strconv.Itoa(triggeredCount) + " --dns-lookup-as-info " + cd.Config.Target[0].Target})
+		cmd = exec.CommandContext(ctx, "/bin/bash", shellArgs...)
+	}
+
 	output, err := cmd.CombinedOutput()
-	// fmt.Printf("%s\n", output)
 	if err != nil {
 		return mtrResult, err
 	}
@@ -149,9 +142,7 @@ func Mtr(cd *Probe, triggered bool) (MtrResult, error) {
 		return mtrResult, err
 	}
 
-	/*r.StopTimestamp = time.Now()*/
 	mtrResult.StopTimestamp = time.Now()
-
 	return mtrResult, nil
 }
 
