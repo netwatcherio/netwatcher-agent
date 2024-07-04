@@ -34,6 +34,7 @@ type TrafficSim struct {
 	ExpectedSequence int
 	DataChan         *chan ProbeData
 	Probe            primitive.ObjectID
+	sync.Mutex
 }
 
 type Connection struct {
@@ -198,7 +199,7 @@ func (ts *TrafficSim) receiveDataLoop() {
 			log.Error("TrafficSim: Error reading from UDP:", err)
 			ts.ClientStats.mu.Lock()
 			ts.ClientStats.LostPackets++
-			ts.ExpectedSequence++
+			//ts.ExpectedSequence++
 			ts.ClientStats.mu.Unlock()
 			continue
 		}

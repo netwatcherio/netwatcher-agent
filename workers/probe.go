@@ -141,16 +141,15 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 					log.Error(err)
 					break
 				}
-				// todo update the allowed agents on the fly!!
 
 				if agentCheck.Config.Server {
+					var allowedAgentsList []primitive.ObjectID
+
+					for _, agent := range agentCheck.Config.Target[1:] {
+						allowedAgentsList = append(allowedAgentsList, agent.Agent)
+					}
+
 					if trafficSimServer == nil || !trafficSimServer.Running || trafficSimServer.Errored {
-						var allowedAgentsList []primitive.ObjectID
-
-						for _, agent := range agentCheck.Config.Target[1:] {
-							allowedAgentsList = append(allowedAgentsList, agent.Agent)
-						}
-
 						trafficSimServer = &probes.TrafficSim{
 							Running:       false,
 							Errored:       false,
@@ -161,21 +160,18 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 							Port:          int64(portNum),
 							AllowedAgents: allowedAgentsList,
 							Probe:         agentCheck.ID,
-							// todo provide list of approved agents
 						}
 
-						// todo implement call back channel for data / statistics
 						log.Info("Running & starting traffic sim server...")
-						// lol do i have to pass this to the go func ??
-						// "i think i do" - co-pilot
-						// lol the co-pilot is right... probably
 						trafficSimServer.Start(nil)
 						trafficSimServer.Running = true
+					} else {
+						// Update the allowed agents list dynamically
+						updateAllowedAgents(trafficSimServer, allowedAgentsList)
 					}
 					continue
 				} else {
-					// todo implement call back channel for data / statistics
-
+					// Client logic remains the same
 					simClient := &probes.TrafficSim{
 						Running:    false,
 						Errored:    false,
@@ -189,7 +185,6 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 					}
 
 					trafficSimClients = append(trafficSimClients, simClient)
-
 					simClient.Start(dC)
 					continue
 				}
@@ -356,4 +351,14 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 			break
 		}
 	}(id, dataChan)
+}
+
+func updateAllowedAgents(server *probes.TrafficSim, newAllowedAgents []primitive.ObjectID) {
+	// Use a mutex to ensure thread-safe updates
+	server.Mutex.Lock()
+	defer server.Mutex.Unlock()
+
+	// Update the allowed agents list
+	server.AllowedAgents = newAllowedAgents
+	log.Infof("Updated allowed agents for TrafficSim server: %v", newAllowedAgents)
 }
