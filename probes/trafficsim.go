@@ -306,9 +306,6 @@ func (ts *TrafficSim) reportClientStats(dC chan ProbeData) {
 			Data:      statsCopy,
 		}
 		dC <- cD
-
-		ts.Sequence = 0
-		ts.LastReceived = 0
 	}
 }
 
@@ -323,6 +320,8 @@ func (ts *TrafficSim) runServer() {
 	log.Infof("Listening on %s:%d", ts.IPAddress, ts.Port)
 
 	ts.Connections = make(map[string]*Connection)
+
+	go ts.monitorConnections()
 
 	for {
 		ts.listenForConnections(ln)
@@ -430,6 +429,7 @@ func (ts *TrafficSim) handleData(conn *net.UDPConn, addr *net.UDPAddr, data Traf
 		log.Warnf("TrafficSim: Out of sequence packet received. Seq: %d", data.Seq)
 	}
 
+	// TODO: Implement reporting of connection statistics to the controller
 	if len(connection.ReceivedData) >= 10 {
 		ts.reportToController(connection)
 		connection.ReceivedData = make(map[int]TrafficSimData)
