@@ -32,6 +32,7 @@ type TrafficSim struct {
 	ClientStats      *ClientStats
 	Sequence         int
 	ExpectedSequence int
+	LastReceived     int
 	DataChan         *chan ProbeData
 	Probe            primitive.ObjectID
 	sync.Mutex
@@ -184,6 +185,9 @@ func (ts *TrafficSim) sendDataLoop() {
 
 func (ts *TrafficSim) receiveDataLoop() {
 	ts.ExpectedSequence = 1
+	ts.LastReceived = 0
+	ts.ClientStats.OutOfSequence = 0
+
 	for {
 		msgBuf := make([]byte, 256)
 		ts.Conn.SetReadDeadline(time.Now().Add(5 * time.Second))
@@ -199,7 +203,6 @@ func (ts *TrafficSim) receiveDataLoop() {
 			log.Error("TrafficSim: Error reading from UDP:", err)
 			ts.ClientStats.mu.Lock()
 			ts.ClientStats.LostPackets++
-			//ts.ExpectedSequence++
 			ts.ClientStats.mu.Unlock()
 			continue
 		}
@@ -231,6 +234,7 @@ func (ts *TrafficSim) receiveDataLoop() {
 				log.Warn("TrafficSim: Negative RTT detected. Setting to 0? RTT: ", rtt)
 				rtt = 0
 			}
+
 			ts.ClientStats.mu.Lock()
 			ts.ClientStats.ReceivedAcks++
 			ts.ClientStats.TotalRTT += rtt
@@ -244,12 +248,23 @@ func (ts *TrafficSim) receiveDataLoop() {
 				ts.ClientStats.MaxRTT = rtt
 			}
 
-			if seq != ts.ExpectedSequence {
-				log.Warnf("TrafficSim: Out of sequence ACK received. Expected: %d, Got: %d", ts.ExpectedSequence, seq)
-				ts.ClientStats.OutOfSequence++
-			} else {
+			if seq == ts.ExpectedSequence {
 				// log.Infof("TrafficSim: Received ACK from %v: Seq %d, RTT: %.2f ms", ts.OtherAgent.Hex(), seq, float64(rtt))
 				ts.ExpectedSequence++
+				ts.LastReceived = seq
+				//ts.OutOfSequenceCount = 0
+			} else if seq > ts.LastReceived {
+				log.Warnf("TrafficSim: Out of sequence ACK received. Expected: %d, Got: %d", ts.ExpectedSequence, seq)
+				ts.ClientStats.OutOfSequence++
+				//ts.OutOfSequenceCount++
+				ts.LastReceived = seq
+			} else {
+				// Packet loss
+				log.Warnf("TrafficSim: Packet loss detected. Expected: %d, Got: %d", ts.ExpectedSequence, seq)
+				ts.ClientStats.LostPackets++
+				ts.ExpectedSequence = seq + 1
+				ts.LastReceived = seq
+				//ts.OutOfSequenceCount = 0
 			}
 			ts.ClientStats.mu.Unlock()
 
