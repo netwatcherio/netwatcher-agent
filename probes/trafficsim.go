@@ -42,6 +42,7 @@ type Connection struct {
 	LastResponse time.Time
 	LostPackets  int
 	ReceivedData map[int]TrafficSimData
+	ExpectedSeq  int
 }
 
 type ClientStats struct {
@@ -306,6 +307,10 @@ func (ts *TrafficSim) reportClientStats(dC chan ProbeData) {
 			Data:      statsCopy,
 		}
 		dC <- cD
+
+		// Reset the sequence periodically
+		ts.Sequence = 0
+		ts.LastReceived = 0
 	}
 }
 
@@ -356,6 +361,7 @@ func (ts *TrafficSim) handleConnection(conn *net.UDPConn, addr *net.UDPAddr, msg
 			LastResponse: time.Now(),
 			LostPackets:  0,
 			ReceivedData: make(map[int]TrafficSimData),
+			ExpectedSeq:  1,
 		}
 		ts.Connections[addrKey] = connection
 	}
@@ -413,20 +419,20 @@ func (ts *TrafficSim) handleData(conn *net.UDPConn, addr *net.UDPAddr, data Traf
 	}
 	ts.sendACK(conn, addr, ackData)
 
-	// Track packet losses
-	for seq := ts.LastReceived + 1; seq < data.Seq; seq++ {
-		if _, exists := connection.ReceivedData[seq]; !exists {
-			connection.LostPackets++
-			log.Warnf("TrafficSim: Detected packet loss. Seq: %d", seq)
+	// Track packet losses and out-of-sequence packets
+	if data.Seq > connection.ExpectedSeq {
+		for seq := connection.ExpectedSeq; seq < data.Seq; seq++ {
+			if _, exists := connection.ReceivedData[seq]; !exists {
+				connection.LostPackets++
+				log.Warnf("TrafficSim: Detected packet loss. Expected: %d, Got: %d", seq, data.Seq)
+			}
 		}
-	}
-
-	// Track last received packet for out-of-sequence detection
-	if data.Seq > ts.LastReceived {
-		ts.LastReceived = data.Seq
-	} else {
+		connection.ExpectedSeq = data.Seq + 1
+	} else if data.Seq < connection.ExpectedSeq {
 		connection.LostPackets++
-		log.Warnf("TrafficSim: Out of sequence packet received. Seq: %d", data.Seq)
+		log.Warnf("TrafficSim: Out of sequence packet received. Expected: %d, Got: %d", connection.ExpectedSeq, data.Seq)
+	} else {
+		connection.ExpectedSeq++
 	}
 
 	// TODO: Implement reporting of connection statistics to the controller
@@ -434,12 +440,14 @@ func (ts *TrafficSim) handleData(conn *net.UDPConn, addr *net.UDPAddr, data Traf
 		ts.reportToController(connection)
 		connection.ReceivedData = make(map[int]TrafficSimData)
 		connection.LostPackets = 0
+		connection.ExpectedSeq = 1
 	}
 }
 
 func (ts *TrafficSim) reportToController(connection *Connection) {
 	log.Warnf("TrafficSim: Reporting to controller for %s: Received %d packets, Lost %d packets",
 		connection.Addr.String(), len(connection.ReceivedData), connection.LostPackets)
+	// TODO: Implement the actual reporting logic here
 }
 
 func (ts *TrafficSim) monitorConnections() {
