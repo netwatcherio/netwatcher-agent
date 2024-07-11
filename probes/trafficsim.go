@@ -14,8 +14,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-const TrafficSim_ReportSeq = 15
-const TrafficSim_DataInterval = 1
+const TrafficSim_ReportSeq = 60
+const TrafficSim_DataInterval = 1 / 2
 
 type TrafficSim struct {
 	Running       bool
