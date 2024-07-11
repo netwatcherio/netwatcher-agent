@@ -303,6 +303,7 @@ func (ts *TrafficSim) calculateStats() map[string]interface{} {
 		"maxRTT":           maxRTT,
 		"stdDevRTT":        stdDevRTT,
 		"totalPackets":     len(ts.ClientStats.PacketTimes),
+		"reportTime":       time.Now().Unix(),
 	}
 }
 
