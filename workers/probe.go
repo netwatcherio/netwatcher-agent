@@ -178,6 +178,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 					} else {
 						// Update the allowed agents list dynamically
 						updateAllowedAgents(trafficSimServer, allowedAgentsList)
+						break
 					}
 					continue
 				} else {
