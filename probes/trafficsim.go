@@ -15,7 +15,7 @@ import (
 )
 
 const TrafficSim_ReportSeq = 60
-const TrafficSim_DataInterval = 1 / 2
+const TrafficSim_DataInterval = 1
 
 type TrafficSim struct {
 	Running       bool
