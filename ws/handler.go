@@ -66,9 +66,9 @@ func (wsH *WebSocketHandler) getBearerToken() (string, error) {
 	loginC := NewClient(wsH.RestClientConfig)
 
 	loginReq := agentLogin{
-		PIN:     wsH.Pin,
-		ID:      wsH.ID,
-		Version: wsH.AgentVersion,
+		PIN:          wsH.Pin,
+		ID:           wsH.ID,
+		AgentVersion: wsH.AgentVersion,
 	}
 
 	var agentLoginR = agentLoginResp{}
@@ -144,9 +144,9 @@ func (wsH *WebSocketHandler) inboundEvents() {
 }
 
 type agentLogin struct {
-	PIN     string `json:"pin"`
-	ID      string `json:"id"`
-	Version string `json:"version"`
+	PIN          string `json:"pin"`
+	ID           string `json:"id"`
+	AgentVersion string `json:"version"`
 }
 
 type agentLoginResp struct {
