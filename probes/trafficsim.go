@@ -293,6 +293,7 @@ func (ts *TrafficSim) reportClientStats() {
 		stats := ts.calculateStats()
 		ts.ClientStats.PacketTimes = make(map[int]PacketTime)
 		ts.ClientStats.LastReportTime = time.Now()
+		ts.Sequence = 1
 		ts.ClientStats.mu.Unlock()
 
 		ts.DataChan <- ProbeData{
