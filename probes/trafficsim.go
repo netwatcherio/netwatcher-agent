@@ -16,6 +16,7 @@ import (
 
 const TrafficSim_ReportSeq = 60
 const TrafficSim_DataInterval = 1
+const RetryInterval = 5 * time.Second
 
 type TrafficSim struct {
 	Running       bool
@@ -95,37 +96,46 @@ func (ts *TrafficSim) buildMessage(msgType TrafficSimMsgType, data TrafficSimDat
 	return string(msgBytes), nil
 }
 
-func (ts *TrafficSim) runClient() {
-	toAddr, err := net.ResolveUDPAddr("udp4", ts.IPAddress+":"+strconv.Itoa(int(ts.Port)))
-	if err != nil {
-		log.Errorf("TrafficSim: Could not resolve %v:%d", ts.IPAddress, ts.Port)
-		return
+func (ts *TrafficSim) runClient() error {
+	for {
+		toAddr, err := net.ResolveUDPAddr("udp4", ts.IPAddress+":"+strconv.Itoa(int(ts.Port)))
+		if err != nil {
+			return fmt.Errorf("could not resolve %v:%d: %v", ts.IPAddress, ts.Port, err)
+		}
+
+		conn, err := net.DialUDP("udp4", nil, toAddr)
+		if err != nil {
+			return fmt.Errorf("unable to connect to %v:%d: %v", ts.IPAddress, ts.Port, err)
+		}
+		defer conn.Close()
+
+		ts.Conn = conn
+		ts.ClientStats = &ClientStats{
+			LastReportTime: time.Now(),
+			ReportInterval: 15 * time.Second,
+			PacketTimes:    make(map[int]PacketTime),
+		}
+
+		if err := ts.sendHello(); err != nil {
+			log.Error("TrafficSim: Failed to establish connection:", err)
+			time.Sleep(RetryInterval)
+			continue
+		}
+
+		log.Infof("TrafficSim: Connection established successfully to %v", ts.OtherAgent.Hex())
+
+		errChan := make(chan error, 3)
+		go ts.sendDataLoop(errChan)
+		go ts.reportClientStats()
+		go ts.receiveDataLoop(errChan)
+
+		select {
+		case err := <-errChan:
+			log.Errorf("TrafficSim: Error in client loop: %v", err)
+			time.Sleep(RetryInterval)
+			continue
+		}
 	}
-
-	conn, err := net.DialUDP("udp4", nil, toAddr)
-	if err != nil {
-		log.Errorf("TrafficSim: Unable to connect to %v:%d", ts.IPAddress, ts.Port)
-		return
-	}
-	defer conn.Close()
-
-	ts.Conn = conn
-	ts.ClientStats = &ClientStats{
-		LastReportTime: time.Now(),
-		ReportInterval: 15 * time.Second,
-		PacketTimes:    make(map[int]PacketTime),
-	}
-
-	if err := ts.sendHello(); err != nil {
-		log.Error("TrafficSim: Failed to establish connection:", err)
-		return
-	}
-
-	log.Infof("TrafficSim: Connection established successfully to %v", ts.OtherAgent.Hex())
-
-	go ts.sendDataLoop()
-	go ts.reportClientStats()
-	ts.receiveDataLoop()
 }
 
 func (ts *TrafficSim) sendHello() error {
@@ -149,7 +159,7 @@ func (ts *TrafficSim) sendHello() error {
 	return nil
 }
 
-func (ts *TrafficSim) sendDataLoop() {
+func (ts *TrafficSim) sendDataLoop(errChan chan<- error) {
 	ts.Sequence = 0
 	for {
 		time.Sleep(TrafficSim_DataInterval * time.Second)
@@ -161,33 +171,42 @@ func (ts *TrafficSim) sendDataLoop() {
 		data := TrafficSimData{Sent: sentTime, Seq: ts.Sequence}
 		dataMsg, err := ts.buildMessage(TrafficSim_DATA, data)
 		if err != nil {
-			log.Error("TrafficSim: Error building data message:", err)
-			continue
+			errChan <- fmt.Errorf("error building data message: %v", err)
+			return
 		}
 
 		_, err = ts.Conn.Write([]byte(dataMsg))
 		if err != nil {
-			log.Error("TrafficSim: Error sending data message:", err)
-		} else {
-			ts.ClientStats.mu.Lock()
-			ts.ClientStats.PacketTimes[ts.Sequence] = PacketTime{Sent: sentTime}
-			ts.ClientStats.mu.Unlock()
+			if netErr, ok := err.(net.Error); ok && netErr.Temporary() {
+				log.Warn("TrafficSim: Temporary error sending data message:", err)
+				continue
+			}
+			errChan <- fmt.Errorf("error sending data message: %v", err)
+			return
 		}
+
+		ts.ClientStats.mu.Lock()
+		ts.ClientStats.PacketTimes[ts.Sequence] = PacketTime{Sent: sentTime}
+		ts.ClientStats.mu.Unlock()
 	}
 }
 
-func (ts *TrafficSim) receiveDataLoop() {
+func (ts *TrafficSim) receiveDataLoop(errChan chan<- error) {
 	for {
 		msgBuf := make([]byte, 256)
 		ts.Conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 		msgLen, _, err := ts.Conn.ReadFromUDP(msgBuf)
 		if err != nil {
 			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-				log.Error("TrafficSim: Timeout: No response received.")
+				log.Warn("TrafficSim: Timeout: No response received.")
 				continue
 			}
-			log.Error("TrafficSim: Error reading from UDP:", err)
-			continue
+			if netErr, ok := err.(net.Error); ok && netErr.Temporary() {
+				log.Warn("TrafficSim: Temporary error reading from UDP:", err)
+				continue
+			}
+			errChan <- fmt.Errorf("error reading from UDP: %v", err)
+			return
 		}
 
 		tsMsg := TrafficSimMsg{}
@@ -332,11 +351,10 @@ func (ts *TrafficSim) calculateStats() map[string]interface{} {
 	}
 }
 
-func (ts *TrafficSim) runServer() {
+func (ts *TrafficSim) runServer() error {
 	ln, err := net.ListenUDP("udp4", &net.UDPAddr{Port: int(ts.Port)})
 	if err != nil {
-		log.Errorf("Unable to listen on :%d", ts.Port)
-		return
+		return fmt.Errorf("unable to listen on :%d: %v", ts.Port, err)
 	}
 	defer ln.Close()
 
@@ -348,8 +366,11 @@ func (ts *TrafficSim) runServer() {
 		msgBuf := make([]byte, 256)
 		msgLen, addr, err := ln.ReadFromUDP(msgBuf)
 		if err != nil {
-			log.Error("TrafficSim: Error reading from UDP:", err)
-			continue
+			if netErr, ok := err.(net.Error); ok && netErr.Temporary() {
+				log.Warn("TrafficSim: Temporary error reading from UDP:", err)
+				continue
+			}
+			return fmt.Errorf("error reading from UDP: %v", err)
 		}
 
 		go ts.handleConnection(ln, addr, msgBuf[:msgLen])
@@ -449,9 +470,16 @@ func (ts *TrafficSim) isAgentAllowed(agentID primitive.ObjectID) bool {
 }
 
 func (ts *TrafficSim) Start() {
-	if ts.IsServer {
-		ts.runServer()
-	} else {
-		ts.runClient()
+	for {
+		var err error
+		if ts.IsServer {
+			err = ts.runServer()
+		} else {
+			err = ts.runClient()
+		}
+		if err != nil {
+			log.Errorf("TrafficSim: Error occurred: %v. Retrying in %v...", err, RetryInterval)
+			time.Sleep(RetryInterval)
+		}
 	}
 }

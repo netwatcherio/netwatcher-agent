@@ -2,6 +2,7 @@ package main
 
 import (
 	"archive/tar"
+	"archive/zip"
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
@@ -101,11 +102,11 @@ func downloadTrippyDependency() error {
 	switch runtime.GOOS {
 	case "windows":
 		if runtime.GOARCH == "amd64" {
-			fileName = "trippy-VER-x86_64-pc-windows-msvc.exe"
+			fileName = "trippy-VER-x86_64-pc-windows-msvc.zip"
 		} else {
-			fileName = "trippy-VER-i686-pc-windows-msvc.exe"
+			fileName = "trippy-VER-aarch64-pc-windows-msvc.zip"
 		}
-		extractedName = fileName
+		extractedName = "trip.exe"
 	case "darwin":
 		fileName = "trippy-VER-x86_64-apple-darwin.tar.gz"
 		extractedName = "trip"
@@ -144,7 +145,15 @@ func downloadTrippyDependency() error {
 	}
 
 	var newHash string
-	if runtime.GOOS != "windows" {
+	if runtime.GOOS == "windows" {
+		newHash, err = extractZipAndHash(tempFilePath, libPath)
+		if err != nil {
+			os.Remove(tempFilePath)
+			return fmt.Errorf("failed to extract archive: %v", err)
+		}
+		// Remove the temporary zip file
+		os.Remove(tempFilePath)
+	} else {
 		// Extract the tar.gz for Linux and macOS
 		newHash, err = extractTarGzAndHash(tempFilePath, libPath)
 		if err != nil {
@@ -153,17 +162,6 @@ func downloadTrippyDependency() error {
 		}
 		// Remove the temporary tar.gz file
 		os.Remove(tempFilePath)
-	} else {
-		// For Windows, just rename the downloaded file and get its hash
-		err = os.Rename(tempFilePath, filePath)
-		if err != nil {
-			os.Remove(tempFilePath)
-			return fmt.Errorf("failed to rename file: %v", err)
-		}
-		newHash, err = getFileHash(filePath)
-		if err != nil {
-			return fmt.Errorf("failed to get file hash: %v", err)
-		}
 	}
 
 	log.Printf("Downloaded trippy binary: %s\n", filePath)
@@ -228,6 +226,44 @@ func extractTarGzAndHash(archivePath, destPath string) (string, error) {
 	}
 
 	return "", fmt.Errorf("'trip' binary not found in archive")
+}
+
+func extractZipAndHash(archivePath, destPath string) (string, error) {
+	reader, err := zip.OpenReader(archivePath)
+	if err != nil {
+		return "", err
+	}
+	defer reader.Close()
+
+	for _, file := range reader.File {
+		if filepath.Base(file.Name) == "trip.exe" {
+			outPath := filepath.Join(destPath, "trip.exe")
+
+			src, err := file.Open()
+			if err != nil {
+				return "", err
+			}
+			defer src.Close()
+
+			dst, err := os.Create(outPath)
+			if err != nil {
+				return "", err
+			}
+			defer dst.Close()
+
+			hasher := sha256.New()
+			writer := io.MultiWriter(dst, hasher)
+
+			if _, err := io.Copy(writer, src); err != nil {
+				return "", err
+			}
+
+			fmt.Printf("Extracted file: %s\n", file.Name)
+			return hex.EncodeToString(hasher.Sum(nil)), nil
+		}
+	}
+
+	return "", fmt.Errorf("'netwatcher-agent.exe' not found in archive")
 }
 
 func getFileHash(filePath string) (string, error) {

@@ -90,9 +90,9 @@ func Mtr(cd *Probe, triggered bool) (MtrResult, error) {
 	switch runtime.GOOS {
 	case "windows":
 		if runtime.GOARCH == "amd64" {
-			trippyBinary = "trippy-x86_64-pc-windows-msvc.exe"
+			trippyBinary = "trip.exe"
 		} else {
-			trippyBinary = "trippy-i686-pc-windows-msvc.exe"
+			trippyBinary = "trip.exe"
 		}
 	case "darwin":
 		trippyBinary = "trip"
@@ -110,7 +110,7 @@ func Mtr(cd *Probe, triggered bool) (MtrResult, error) {
 
 	trippyPath = filepath.Join(trippyPath, trippyBinary)
 
-	args := []string{
+	/*args := []string{
 		"--icmp",
 		"--mode json",
 		"--multipath-strategy dublin",
@@ -118,18 +118,19 @@ func Mtr(cd *Probe, triggered bool) (MtrResult, error) {
 		"--dns-lookup-as-info",
 		"--report-cycles " + strconv.Itoa(triggeredCount),
 		cd.Config.Target[0].Target,
-	}
+	}*/
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(60)*time.Second)
-	defer cancel()
+	/*ctx, cancel := context.WithTimeout(context.Background(), time.Duration(60)*time.Second)
+	defer cancel()*/
 
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
-		cmd = exec.CommandContext(ctx, trippyPath, args...)
+		shellArgs := append([]string{"/c", trippyPath + " --icmp --mode json --multipath-strategy classic --dns-resolve-method cloudflare --report-cycles " + strconv.Itoa(triggeredCount) + " --dns-lookup-as-info " + cd.Config.Target[0].Target})
+		cmd = exec.CommandContext(context.TODO(), "cmd.exe", shellArgs...)
 	} else {
 		// For Linux and macOS, use /bin/bash
 		shellArgs := append([]string{"-c", trippyPath + " --icmp --mode json --multipath-strategy classic --dns-resolve-method cloudflare --report-cycles " + strconv.Itoa(triggeredCount) + " --dns-lookup-as-info " + cd.Config.Target[0].Target})
-		cmd = exec.CommandContext(ctx, "/bin/bash", shellArgs...)
+		cmd = exec.CommandContext(context.TODO(), "/bin/bash", shellArgs...)
 	}
 
 	output, err := cmd.CombinedOutput()
