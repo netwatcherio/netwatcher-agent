@@ -216,13 +216,34 @@ func (ts *TrafficSim) reportClientStats() {
 	ticker := time.NewTicker(TrafficSim_ReportSeq * time.Second)
 	defer ticker.Stop()
 
+	const MaxWaitTime = 500 * time.Millisecond
+
 	for range ticker.C {
 		ts.ClientStats.mu.Lock()
+
+		// Find the highest sequence number
+		var maxSeq int
+		for seq := range ts.ClientStats.PacketTimes {
+			if seq > maxSeq {
+				maxSeq = seq
+			}
+		}
+
+		// Wait for the last packet, but no longer than MaxWaitTime
+		startWait := time.Now()
+		for time.Since(startWait) < MaxWaitTime {
+			if pTime, ok := ts.ClientStats.PacketTimes[maxSeq]; ok && pTime.Received != 0 {
+				break
+			}
+			ts.ClientStats.mu.Unlock()
+			time.Sleep(10 * time.Millisecond)
+			ts.ClientStats.mu.Lock()
+		}
+
 		stats := ts.calculateStats()
 		ts.ClientStats.PacketTimes = make(map[int]PacketTime)
 		ts.ClientStats.LastReportTime = time.Now()
 		ts.ClientStats.mu.Unlock()
-		ts.Sequence = 1
 
 		ts.DataChan <- ProbeData{
 			ProbeID:   ts.Probe,
@@ -250,35 +271,39 @@ func (ts *TrafficSim) calculateStats() map[string]interface{} {
 	}
 	sort.Ints(keys)
 
+	now := time.Now().UnixMilli()
 	for _, seq := range keys {
 		pTime := ts.ClientStats.PacketTimes[seq]
 		if pTime.Received == 0 {
-			lostPackets++
-		} else {
-			rtt := pTime.Received - pTime.Sent
-			rtts = append(rtts, float64(rtt))
-			totalRTT += rtt
-			if minRTT == 0 || rtt < minRTT {
-				minRTT = rtt
+			if now-pTime.Sent > 500 { // 500ms threshold
+				lostPackets++
 			}
-			if rtt > maxRTT {
-				maxRTT = rtt
-			}
-			if pTime.Received < lastReceivedTime {
-				outOfOrder++
-			}
-			if seq < lastSeq {
-				outOfOrder++
-			}
-			lastReceivedTime = pTime.Received
-			lastSeq = seq
+			continue
+		}
 
-			// Check for duplicate packets
-			if seenPackets[seq] {
-				duplicatePackets++
-			} else {
-				seenPackets[seq] = true
-			}
+		rtt := pTime.Received - pTime.Sent
+		rtts = append(rtts, float64(rtt))
+		totalRTT += rtt
+		if minRTT == 0 || rtt < minRTT {
+			minRTT = rtt
+		}
+		if rtt > maxRTT {
+			maxRTT = rtt
+		}
+		if pTime.Received < lastReceivedTime {
+			outOfOrder++
+		}
+		if seq < lastSeq {
+			outOfOrder++
+		}
+		lastReceivedTime = pTime.Received
+		lastSeq = seq
+
+		// Check for duplicate packets
+		if seenPackets[seq] {
+			duplicatePackets++
+		} else {
+			seenPackets[seq] = true
 		}
 	}
 
