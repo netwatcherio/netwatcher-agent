@@ -36,6 +36,7 @@ type TrafficSim struct {
 	MaxSequence   int
 	DataChan      chan ProbeData
 	Probe         primitive.ObjectID
+	localIP       string
 	sync.Mutex
 }
 
@@ -98,12 +99,27 @@ func (ts *TrafficSim) buildMessage(msgType TrafficSimMsgType, data TrafficSimDat
 
 func (ts *TrafficSim) runClient() error {
 	for {
+		currentIP, err := getLocalIP()
+		if err != nil {
+			return fmt.Errorf("failed to get local IP: %v", err)
+		}
+
+		if ts.localIP != currentIP {
+			ts.localIP = currentIP
+			log.Infof("TrafficSim: Local IP updated to %s", ts.localIP)
+		}
+
 		toAddr, err := net.ResolveUDPAddr("udp4", ts.IPAddress+":"+strconv.Itoa(int(ts.Port)))
 		if err != nil {
 			return fmt.Errorf("could not resolve %v:%d: %v", ts.IPAddress, ts.Port, err)
 		}
 
-		conn, err := net.DialUDP("udp4", nil, toAddr)
+		localAddr, err := net.ResolveUDPAddr("udp4", ts.localIP+":0")
+		if err != nil {
+			return fmt.Errorf("could not resolve local address: %v", err)
+		}
+
+		conn, err := net.DialUDP("udp4", localAddr, toAddr)
 		if err != nil {
 			return fmt.Errorf("unable to connect to %v:%d: %v", ts.IPAddress, ts.Port, err)
 		}
@@ -231,6 +247,21 @@ func (ts *TrafficSim) receiveDataLoop(errChan chan<- error) {
 	}
 }
 
+func getLocalIP() (string, error) {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return "", err
+	}
+	for _, addr := range addrs {
+		if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP.String(), nil
+			}
+		}
+	}
+	return "", fmt.Errorf("no suitable local IP address found")
+}
+
 func (ts *TrafficSim) reportClientStats() {
 	ticker := time.NewTicker(TrafficSim_ReportSeq * time.Second)
 	defer ticker.Stop()
@@ -352,19 +383,24 @@ func (ts *TrafficSim) calculateStats() map[string]interface{} {
 }
 
 func (ts *TrafficSim) runServer() error {
-	ln, err := net.ListenUDP("udp4", &net.UDPAddr{Port: int(ts.Port)})
+	addr, err := net.ResolveUDPAddr("udp4", ts.localIP+":"+strconv.Itoa(int(ts.Port)))
 	if err != nil {
-		return fmt.Errorf("unable to listen on :%d: %v", ts.Port, err)
+		return fmt.Errorf("unable to resolve address: %v", err)
+	}
+
+	ln, err := net.ListenUDP("udp4", addr)
+	if err != nil {
+		return fmt.Errorf("unable to listen on %s:%d: %v", ts.localIP, ts.Port, err)
 	}
 	defer ln.Close()
 
-	log.Infof("Listening on %s:%d", ts.IPAddress, ts.Port)
+	log.Infof("Listening on %s:%d", ts.localIP, ts.Port)
 
 	ts.Connections = make(map[primitive.ObjectID]*Connection)
 
 	for {
 		msgBuf := make([]byte, 256)
-		msgLen, addr, err := ln.ReadFromUDP(msgBuf)
+		msgLen, remoteAddr, err := ln.ReadFromUDP(msgBuf)
 		if err != nil {
 			if netErr, ok := err.(net.Error); ok && netErr.Temporary() {
 				log.Warn("TrafficSim: Temporary error reading from UDP:", err)
@@ -373,7 +409,7 @@ func (ts *TrafficSim) runServer() error {
 			return fmt.Errorf("error reading from UDP: %v", err)
 		}
 
-		go ts.handleConnection(ln, addr, msgBuf[:msgLen])
+		go ts.handleConnection(ln, remoteAddr, msgBuf[:msgLen])
 	}
 }
 
@@ -472,6 +508,12 @@ func (ts *TrafficSim) isAgentAllowed(agentID primitive.ObjectID) bool {
 func (ts *TrafficSim) Start() {
 	for {
 		var err error
+		ts.localIP, err = getLocalIP()
+		if err != nil {
+			log.Errorf("TrafficSim: Failed to get local IP: %v", err)
+			return
+		}
+
 		if ts.IsServer {
 			err = ts.runServer()
 		} else {
