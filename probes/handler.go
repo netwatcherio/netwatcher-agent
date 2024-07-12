@@ -68,13 +68,14 @@ func (pd *ProbeData) parse(probe *Probe) (interface{}, error) {
 type ProbeType string
 
 const (
-	ProbeType_RPERF       ProbeType = "RPERF"
-	ProbeType_MTR         ProbeType = "MTR"
-	ProbeType_PING        ProbeType = "PING"
-	ProbeType_SPEEDTEST   ProbeType = "SPEEDTEST"
-	ProbeType_NETWORKINFO ProbeType = "NETINFO"
-	ProbeType_SYSTEMINFO  ProbeType = "SYSINFO"
-	ProbeType_TRAFFICSIM  ProbeType = "TRAFFICSIM"
+	ProbeType_RPERF             ProbeType = "RPERF"
+	ProbeType_MTR               ProbeType = "MTR"
+	ProbeType_PING              ProbeType = "PING"
+	ProbeType_SPEEDTEST         ProbeType = "SPEEDTEST"
+	ProbeType_SPEEDTEST_SERVERS ProbeType = "SPEEDTEST_SERVERS"
+	ProbeType_NETWORKINFO       ProbeType = "NETINFO"
+	ProbeType_SYSTEMINFO        ProbeType = "SYSINFO"
+	ProbeType_TRAFFICSIM        ProbeType = "TRAFFICSIM"
 )
 
 type ProbeConfig struct {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/netwatcherio/netwatcher-agent/probes"
+	"github.com/showwin/speedtest-go/speedtest"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/sync/syncmap"
@@ -311,6 +312,14 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 					//}
 				}*/
 				continue
+			case probes.ProbeType_SPEEDTEST_SERVERS:
+				// todo make this dynamic and on demand
+				var speedtestClient = speedtest.New()
+				serverList, _ := speedtestClient.FetchServers()
+				//targets, _ := serverList.FindServer([]int{})
+				// todo ship this off to the backend so we can display "speedtest" servers near the agent, and periodically refresh the options
+				log.Warn(serverList)
+				break
 			case probes.ProbeType_PING:
 				log.Infof("Ping: Running test for %v...", agentCheck.Config.Target[0].Target)
 

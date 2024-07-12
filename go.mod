@@ -9,7 +9,7 @@ require (
 	github.com/kataras/iris/v12 v12.2.8
 	github.com/kataras/neffos v0.0.22
 	github.com/prometheus-community/pro-bing v0.3.0
-	github.com/showwin/speedtest-go v1.6.9
+	github.com/showwin/speedtest-go v1.7.7
 	github.com/sirupsen/logrus v1.9.3
 	go.mongodb.org/mongo-driver v1.13.0
 	golang.org/x/sync v0.5.0
