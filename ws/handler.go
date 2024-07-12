@@ -26,6 +26,7 @@ type WebSocketHandler struct {
 	Namespaces       *websocket.Namespaces
 	RestClientConfig RestClientConfig
 	ProbeGetCh       chan []probes.Probe
+	AgentVersion     string
 }
 
 func (wsH *WebSocketHandler) GetConnection() *websocket.NSConn {
@@ -65,8 +66,9 @@ func (wsH *WebSocketHandler) getBearerToken() (string, error) {
 	loginC := NewClient(wsH.RestClientConfig)
 
 	loginReq := agentLogin{
-		PIN: wsH.Pin,
-		ID:  wsH.ID,
+		PIN:     wsH.Pin,
+		ID:      wsH.ID,
+		Version: wsH.AgentVersion,
 	}
 
 	var agentLoginR = agentLoginResp{}
@@ -142,8 +144,9 @@ func (wsH *WebSocketHandler) inboundEvents() {
 }
 
 type agentLogin struct {
-	PIN string `json:"pin"`
-	ID  string `json:"id"`
+	PIN     string `json:"pin"`
+	ID      string `json:"id"`
+	Version string `json:"version"`
 }
 
 type agentLoginResp struct {

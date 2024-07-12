@@ -51,11 +51,12 @@ func main() {
 	var probeDataCh = make(chan probes.ProbeData)
 
 	wsH := &ws.WebSocketHandler{
-		Host:       os.Getenv("HOST"),
-		HostWS:     os.Getenv("HOST_WS"),
-		Pin:        os.Getenv("PIN"),
-		ID:         os.Getenv("ID"),
-		ProbeGetCh: probeGetCh,
+		Host:         os.Getenv("HOST"),
+		HostWS:       os.Getenv("HOST_WS"),
+		Pin:          os.Getenv("PIN"),
+		ID:           os.Getenv("ID"),
+		AgentVersion: VERSION,
+		ProbeGetCh:   probeGetCh,
 	}
 	wsH.InitWS()
 	// init the config getter before starting the probe workers?
