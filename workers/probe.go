@@ -123,6 +123,8 @@ func contains(ids []primitive.ObjectID, id primitive.ObjectID) bool {
 	return false
 }
 
+var speedTestRunning = false
+
 var trafficSimServer *probes.TrafficSim
 var trafficSimClients []*probes.TrafficSim
 
@@ -218,11 +220,8 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 					Data:    mtr,
 				}
 
-				//fmt.Println("Sending apiClient to the channel (Sysinfo) for ", agentCheck.Config.Interval, "...")
 				dC <- cD
-				//fmt.Println("sleeping for " + strconv.Itoa(agentCheck.Config.Interval) + " minutes")
 				time.Sleep(time.Duration(agentCheck.Config.Interval) * time.Minute)
-				// todo push
 				continue
 			case probes.ProbeType_MTR:
 				log.Info("MTR: Running test for ", agentCheck.Config.Target[0].Target, "...")
@@ -231,22 +230,13 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 					fmt.Println(err)
 				}
 
-				/*m, err := json.Marshal(mtr)
-				if err != nil {
-					fmt.Print(err)
-				}*/
-
 				cD := probes.ProbeData{
 					ProbeID:   agentCheck.ID,
 					Triggered: false,
 					Data:      mtr,
 				}
-
-				//fmt.Println("Sending apiClient to the channel (MTR) for ", agentCheck.Config.Interval, "...")
 				dC <- cD
-				//fmt.Println("sleeping for " + strconv.Itoa(agentCheck.Config.Interval) + " minutes")
 				time.Sleep(time.Duration(agentCheck.Config.Interval) * time.Minute)
-				// todo push
 				continue
 			/*case probes.ProbeType_RPERF:
 			// if check says its a server, start a iperf server based on the bind and port provided in target
@@ -283,25 +273,17 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 			continue*/
 			case probes.ProbeType_SPEEDTEST:
 				// todo make this dynamic and on demand
-				/*if agentCheck.Config.Pending {
+				if !speedTestRunning {
 					fmt.Println("Running speed test...")
-					speedtest, err := checks.SpeedTest(&agentCheck)
+					speedTestResult, err := probes.SpeedTest(&agentCheck)
 					if err != nil {
-						fmt.Println(err)
+						log.Error(err)
 						return
 					}
 
-					m, err := json.Marshal(speedtest)
-					if err != nil {
-						fmt.Print(err)
-					}
-
-					cD := api.CheckData{
-						Target:  agentCheck.Target,
-						CheckID: agentCheck.ID,
-						AgentID: agentCheck.AgentID,
-						Result:  string(m),
-						Type:    api.CtSpeedtest,
+					cD := probes.ProbeData{
+						ProbeID: agentCheck.ID,
+						Data:    speedTestResult,
 					}
 
 					dC <- cD
@@ -310,15 +292,22 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 					//todo preventing it from being in the configuration after
 					//time.Sleep(time.Minute * 5)
 					//}
-				}*/
-				continue
+				}
+				return
 			case probes.ProbeType_SPEEDTEST_SERVERS:
 				// todo make this dynamic and on demand
 				var speedtestClient = speedtest.New()
 				serverList, _ := speedtestClient.FetchServers()
 				//targets, _ := serverList.FindServer([]int{})
 				// todo ship this off to the backend so we can display "speedtest" servers near the agent, and periodically refresh the options
-				log.Warn(serverList)
+
+				cD := probes.ProbeData{
+					ProbeID: agentCheck.ID,
+					Data:    serverList,
+				}
+
+				dC <- cD
+
 				break
 			case probes.ProbeType_PING:
 				log.Infof("Ping: Running test for %v...", agentCheck.Config.Target[0].Target)
