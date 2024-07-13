@@ -1,8 +1,10 @@
 package probes
 
 import (
+	"encoding/json"
 	"github.com/showwin/speedtest-go/speedtest"
 	"github.com/showwin/speedtest-go/speedtest/transport"
+	log "github.com/sirupsen/logrus"
 	"strconv"
 	"time"
 )
@@ -111,6 +113,13 @@ func SpeedTest(cd *Probe) (SpeedTestResult, error) {
 		TestData:  s1,
 		Timestamp: time.Now(),
 	}
+
+	marshal, err := json.Marshal(result)
+	if err != nil {
+		return SpeedTestResult{}, err
+	}
+
+	log.Warnf("%s", marshal)
 
 	return result, nil
 }

@@ -124,6 +124,9 @@ func contains(ids []primitive.ObjectID, id primitive.ObjectID) bool {
 }
 
 var speedTestRunning = false
+var speedTestRetryCount = 0
+
+const speedTestRetryMax = 3
 
 var trafficSimServer *probes.TrafficSim
 var trafficSimClients []*probes.TrafficSim
@@ -274,26 +277,38 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 			case probes.ProbeType_SPEEDTEST:
 				// todo make this dynamic and on demand
 				if !speedTestRunning {
-					fmt.Println("Running speed test...")
+					log.Info("Running speed test for ... ", agentCheck.Config.Target[0].Target)
+					if agentCheck.Config.Target[0].Target == "ok" {
+						log.Info("SpeedTest: Target is ok, skipping...")
+						time.Sleep(10 * time.Second)
+						continue
+					}
 					speedTestResult, err := probes.SpeedTest(&agentCheck)
 					if err != nil {
 						log.Error(err)
-						return
+						time.Sleep(30 * time.Second)
+						if speedTestRetryCount >= 3 {
+							agentCheck.Config.Target[0].Target = "ok"
+							speedTestRunning = false
+							log.Warn("SpeedTest: Failed to run test after 3 retries, setting target to 'ok'...")
+						}
+						speedTestRetryCount++
+						continue
 					}
+
+					speedTestRetryCount = 0
+
+					agentCheck.Config.Target[0].Target = "ok"
 
 					cD := probes.ProbeData{
 						ProbeID: agentCheck.ID,
 						Data:    speedTestResult,
 					}
+					speedTestRunning = false
 
 					dC <- cD
-
-					//todo make this onyl run once, because when it uploads to the server, it will disable it,
-					//todo preventing it from being in the configuration after
-					//time.Sleep(time.Minute * 5)
-					//}
 				}
-				return
+				continue
 			case probes.ProbeType_SPEEDTEST_SERVERS:
 				// todo make this dynamic and on demand
 				var speedtestClient = speedtest.New()
@@ -307,7 +322,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 				}
 
 				dC <- cD
-
+				time.Sleep(time.Hour * 12)
 				break
 			case probes.ProbeType_PING:
 				log.Infof("Ping: Running test for %v...", agentCheck.Config.Target[0].Target)
