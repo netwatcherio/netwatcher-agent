@@ -49,7 +49,7 @@ func findMatchingMTRProbe(probe probes.Probe) (probes.Probe, error) {
 	})
 
 	if !found {
-		return probes.Probe{}, errors.New("no matching probe found")
+		return probes.Probe{}, errors.New("no matching MTR probe found")
 	}
 	return foundProbe, nil
 }
