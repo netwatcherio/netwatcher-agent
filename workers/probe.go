@@ -37,6 +37,15 @@ func findMatchingMTRProbe(probe probes.Probe) (probes.Probe, error) {
 		if probeWorker.Probe.Type == probes.ProbeType_MTR {
 			for _, target := range probeWorker.Probe.Config.Target {
 				for _, givenTarget := range probe.Config.Target {
+					if strings.Contains(":", givenTarget.Target) {
+						tt := strings.Split(":", givenTarget.Target)
+						if tt[0] == target.Target {
+							foundProbe = probeWorker.Probe
+							found = true
+							return false // stop iterating
+						}
+					}
+
 					if target.Target == givenTarget.Target {
 						foundProbe = probeWorker.Probe
 						found = true
