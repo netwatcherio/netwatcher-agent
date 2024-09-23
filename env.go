@@ -12,7 +12,8 @@ const (
 	defaultConfig = "HOST=https://api.netwatcher.io\nHOST_WS=wss://api.netwatcher.io/agent_ws\nID=\nPIN=\n"
 )
 
-const VERSION = "1.2.1b6"
+// 1.2.1b5?
+const VERSION = "1.69.420_beta_gamma_fortnite"
 
 func loadConfig(configFile string) error {
 	fmt.Printf("NetWatcher v%s - Copyright (c) 2024-%d Shaun Agostinho\n", VERSION, time.Now().Year())

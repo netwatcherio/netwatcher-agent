@@ -97,7 +97,7 @@ func (ts *TrafficSim) buildMessage(msgType TrafficSimMsgType, data TrafficSimDat
 	return string(msgBytes), nil
 }
 
-func (ts *TrafficSim) runClient() error {
+func (ts *TrafficSim) runClient(mtrProbe *Probe) error {
 	for {
 		currentIP, err := getLocalIP()
 		if err != nil {
@@ -152,7 +152,7 @@ func (ts *TrafficSim) runClient() error {
 		stopChan := make(chan struct{})
 
 		go ts.sendDataLoop(errChan, stopChan)
-		go ts.reportClientStats(stopChan)
+		go ts.reportClientStats(stopChan, mtrProbe)
 		go ts.receiveDataLoop(errChan, stopChan)
 
 		select {
@@ -268,7 +268,7 @@ func (ts *TrafficSim) receiveDataLoop(errChan chan<- error, stopChan <-chan stru
 	}
 }
 
-func (ts *TrafficSim) reportClientStats(stopChan <-chan struct{}) {
+func (ts *TrafficSim) reportClientStats(stopChan <-chan struct{}, mtrProbe *Probe) {
 	ticker := time.NewTicker(TrafficSim_ReportSeq * time.Second)
 	defer ticker.Stop()
 
@@ -300,7 +300,7 @@ func (ts *TrafficSim) reportClientStats(stopChan <-chan struct{}) {
 				ts.ClientStats.mu.Lock()
 			}
 
-			stats := ts.calculateStats()
+			stats := ts.calculateStats(mtrProbe)
 			ts.ClientStats.PacketTimes = make(map[int]PacketTime)
 			ts.ClientStats.LastReportTime = time.Now()
 			ts.Sequence = 1
@@ -331,7 +331,7 @@ func getLocalIP() (string, error) {
 	return "", fmt.Errorf("no suitable local IP address found")
 }
 
-func (ts *TrafficSim) calculateStats() map[string]interface{} {
+func (ts *TrafficSim) calculateStats(mtrProbe *Probe) map[string]interface{} {
 	var totalRTT, minRTT, maxRTT int64
 	var rtts []float64
 	lostPackets := 0
@@ -394,6 +394,29 @@ func (ts *TrafficSim) calculateStats() map[string]interface{} {
 			stdDevRTT += math.Pow(rtt-avgRTT, 2)
 		}
 		stdDevRTT = math.Sqrt(stdDevRTT / float64(len(rtts)))
+	}
+
+	// todo configurable threshhold??
+	if lostPackets/len(ts.ClientStats.PacketTimes) > 5 {
+		if len(mtrProbe.Config.Target) > 0 {
+			mtr, err := Mtr(mtrProbe, true)
+			if err != nil {
+				fmt.Println(err)
+			}
+
+			/*m, err := json.Marshal(mtr)
+			if err != nil {
+				fmt.Print(err)
+			}*/
+
+			dC := ProbeData{
+				ProbeID:   mtrProbe.ID,
+				Triggered: true,
+				Data:      mtr,
+			}
+			fmt.Println("Triggered MTR for ", mtrProbe.Config.Target[0].Target, "...")
+			ts.DataChan <- dC
+		}
 	}
 
 	return map[string]interface{}{
@@ -532,7 +555,7 @@ func (ts *TrafficSim) isAgentAllowed(agentID primitive.ObjectID) bool {
 	return false
 }
 
-func (ts *TrafficSim) Start() {
+func (ts *TrafficSim) Start(mtrProbe *Probe) {
 	for {
 		var err error
 		ts.localIP, err = getLocalIP()
@@ -545,7 +568,7 @@ func (ts *TrafficSim) Start() {
 		if ts.IsServer {
 			err = ts.runServer()
 		} else {
-			err = ts.runClient()
+			err = ts.runClient(mtrProbe)
 		}
 		if err != nil {
 			log.Errorf("TrafficSim: Error occurred: %v. Retrying in %v...", err, RetryInterval)

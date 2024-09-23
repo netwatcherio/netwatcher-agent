@@ -158,6 +158,11 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 					break
 				}
 
+				probe, err := findMatchingMTRProbe(agentCheck)
+				if err != nil {
+					log.Error(err)
+				}
+
 				if agentCheck.Config.Server {
 					var allowedAgentsList []primitive.ObjectID
 
@@ -180,7 +185,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 
 						log.Info("Running & starting traffic sim server...")
 						trafficSimServer.Running = true
-						trafficSimServer.Start()
+						trafficSimServer.Start(nil)
 					} else {
 						// Update the allowed agents list dynamically
 						updateAllowedAgents(trafficSimServer, allowedAgentsList)
@@ -203,7 +208,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 
 					trafficSimClients = append(trafficSimClients, simClient)
 					simClient.Running = true
-					simClient.Start()
+					simClient.Start(&probe)
 					continue
 				}
 
