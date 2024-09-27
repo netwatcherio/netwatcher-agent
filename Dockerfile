@@ -7,6 +7,9 @@ WORKDIR /app
 # Copy the local package files to the container's workspace.
 COPY . /app
 
+# We need bash for some tests
+RUN apk update && apk add bash
+
 # Download all the dependencies
 RUN go mod download
 
