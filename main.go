@@ -94,7 +94,7 @@ func shutdown() {
 }
 
 func downloadTrippyDependency() error {
-	var version = "0.10.0"
+	var version = "0.13.0"
 	baseURL := "https://github.com/fujiapple852/trippy/releases/download/" + version + "/"
 
 	var fileName, extractedName string
