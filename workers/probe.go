@@ -12,16 +12,29 @@ import (
 	"strconv"
 	_ "strconv"
 	"strings"
+	"sync"
 	"time"
 	_ "time"
 )
 
 type ProbeWorkerS struct {
-	Probe    probes.Probe
-	ToRemove bool
+	Probe     probes.Probe
+	ToRemove  bool
+	StopChan  chan struct{}   // For stopping TrafficSim instances
+	WaitGroup *sync.WaitGroup // For waiting for cleanup
 }
 
 var checkWorkers syncmap.Map
+
+// Track TrafficSim instances
+var trafficSimServer *probes.TrafficSim
+var trafficSimServerMutex sync.Mutex
+var trafficSimClients map[primitive.ObjectID]*probes.TrafficSim
+var trafficSimClientsMutex sync.Mutex
+
+func init() {
+	trafficSimClients = make(map[primitive.ObjectID]*probes.TrafficSim)
+}
 
 func findMatchingMTRProbe(probe probes.Probe) (probes.Probe, error) {
 	var foundProbe probes.Probe
@@ -37,8 +50,8 @@ func findMatchingMTRProbe(probe probes.Probe) (probes.Probe, error) {
 		if probeWorker.Probe.Type == probes.ProbeType_MTR {
 			for _, target := range probeWorker.Probe.Config.Target {
 				for _, givenTarget := range probe.Config.Target {
-					if strings.Contains(":", givenTarget.Target) {
-						tt := strings.Split(":", givenTarget.Target)
+					if strings.Contains(givenTarget.Target, ":") {
+						tt := strings.Split(givenTarget.Target, ":")
 						if tt[0] == target.Target {
 							foundProbe = probeWorker.Probe
 							found = true
@@ -63,59 +76,166 @@ func findMatchingMTRProbe(probe probes.Probe) (probes.Probe, error) {
 	return foundProbe, nil
 }
 
+func trafficSimConfigChanged(oldProbe, newProbe probes.Probe) bool {
+	// Check if target address/port changed
+	if len(oldProbe.Config.Target) > 0 && len(newProbe.Config.Target) > 0 {
+		if oldProbe.Config.Target[0].Target != newProbe.Config.Target[0].Target {
+			return true
+		}
+		if oldProbe.Config.Target[0].Agent != newProbe.Config.Target[0].Agent {
+			return true
+		}
+	}
+
+	// Check if server flag changed
+	if oldProbe.Config.Server != newProbe.Config.Server {
+		return true
+	}
+
+	return false
+}
+
+func stopTrafficSim(probeID primitive.ObjectID, isServer bool) {
+	if isServer {
+		trafficSimServerMutex.Lock()
+		defer trafficSimServerMutex.Unlock()
+
+		if trafficSimServer != nil {
+			log.Infof("Stopping TrafficSim server for probe %s", probeID.Hex())
+			// Use Stop() if available, otherwise manually stop
+			if trafficSimServer.Running {
+				trafficSimServer.Running = false
+				if trafficSimServer.Conn != nil {
+					trafficSimServer.Conn.Close()
+				}
+			}
+			trafficSimServer = nil
+		}
+	} else {
+		trafficSimClientsMutex.Lock()
+		defer trafficSimClientsMutex.Unlock()
+
+		if client, exists := trafficSimClients[probeID]; exists {
+			log.Infof("Stopping TrafficSim client for probe %s", probeID.Hex())
+			// Use Stop() if available, otherwise manually stop
+			if client.Running {
+				client.Running = false
+				if client.Conn != nil {
+					client.Conn.Close()
+				}
+			}
+			delete(trafficSimClients, probeID)
+		}
+	}
+}
+
 func InitProbeWorker(checkChan chan []probes.Probe, dataChan chan probes.ProbeData, thisAgent primitive.ObjectID) {
 	go func(aC chan []probes.Probe, dC chan probes.ProbeData) {
 		for {
 			a := <-aC
-			// add to map to continue to update it eventually
-
-			// todo we fetch an array of probes
-			// we then need to process the probes to see if they have been changes (eg. targets, etc.)
-			// if there haven't been any changes, then we can continue to start/load them
-			// if they have changed, then we need to update that pointer to the probe
-			// we also need to confirm that if the session with the websocket is still connected
-
-			// currently: checks are ran assuming they will continue to be ran, and only are removed/updated
-			// if the actual check is removed. do we keep it like this or allow check modification?
 
 			var newIds []primitive.ObjectID
 
 			for _, ad := range a {
-
-				_, ok := checkWorkers.Load(ad.ID)
+				existingWorker, ok := checkWorkers.Load(ad.ID)
 
 				if !ok {
-					log.Infof("Starting worker for probe %s", ad.ID.Hex())
+					log.Infof("Starting NEW worker for probe %s (type: %s)", ad.ID.Hex(), ad.Type)
+					// Store the probe first with new StopChan
+					stopChan := make(chan struct{})
+					wg := &sync.WaitGroup{}
+					checkWorkers.Store(ad.ID, ProbeWorkerS{
+						Probe:     ad,
+						ToRemove:  false,
+						StopChan:  stopChan,
+						WaitGroup: wg,
+					})
 					startCheckWorker(ad.ID, dataChan, thisAgent)
 				} else {
-					//checkWorkers.Swap(ad.ID, ad)
-					log.Infof("NOT Swapping probe with existing %s", ad.ID.Hex())
+					oldProbeWorker := existingWorker.(ProbeWorkerS)
 
-					if ad.Type == probes.ProbeType_TRAFFICSIM && ad.Config.Server {
+					// Check if TrafficSim config changed
+					if ad.Type == probes.ProbeType_TRAFFICSIM && trafficSimConfigChanged(oldProbeWorker.Probe, ad) {
+						log.Infof("TrafficSim probe %s configuration changed, restarting", ad.ID.Hex())
+
+						// Stop the old instance
+						if oldProbeWorker.StopChan != nil {
+							close(oldProbeWorker.StopChan)
+						}
+
+						// Wait for worker to finish
+						if oldProbeWorker.WaitGroup != nil {
+							log.Debugf("Waiting for old TrafficSim worker %s to stop...", ad.ID.Hex())
+							oldProbeWorker.WaitGroup.Wait()
+							log.Debugf("Old TrafficSim worker %s stopped", ad.ID.Hex())
+						}
+
+						// Force stop TrafficSim instance
+						stopTrafficSim(ad.ID, oldProbeWorker.Probe.Config.Server)
+
+						// Wait a bit more for complete cleanup
+						time.Sleep(1 * time.Second)
+
+						// Store the updated probe with new StopChan
+						newStopChan := make(chan struct{})
+						newWg := &sync.WaitGroup{}
+						checkWorkers.Store(ad.ID, ProbeWorkerS{
+							Probe:     ad,
+							ToRemove:  false,
+							StopChan:  newStopChan,
+							WaitGroup: newWg,
+						})
+
+						// Start new worker
+						log.Infof("Starting UPDATED worker for probe %s", ad.ID.Hex())
+						startCheckWorker(ad.ID, dataChan, thisAgent)
+					} else if ad.Type == probes.ProbeType_TRAFFICSIM && ad.Config.Server {
+						// Just update allowed agents for server
 						var allowedAgentsList []primitive.ObjectID
-
 						for _, agent := range ad.Config.Target[1:] {
 							allowedAgentsList = append(allowedAgentsList, agent.Agent)
 						}
 
-						updateAllowedAgents(trafficSimServer, allowedAgentsList)
+						trafficSimServerMutex.Lock()
+						if trafficSimServer != nil {
+							updateAllowedAgents(trafficSimServer, allowedAgentsList)
+						}
+						trafficSimServerMutex.Unlock()
+
+						// Update the probe data
+						oldProbeWorker.Probe = ad
+						checkWorkers.Store(ad.ID, oldProbeWorker)
+					} else {
+						// Update the probe data for non-TrafficSim types
+						oldProbeWorker.Probe = ad
+						checkWorkers.Store(ad.ID, oldProbeWorker)
 					}
 				}
 
 				newIds = append(newIds, ad.ID)
-
-				checkWorkers.Store(ad.ID, ProbeWorkerS{
-					Probe:    ad,
-					ToRemove: false,
-				})
 			}
 
+			// Mark probes for removal
 			checkWorkers.Range(func(key any, value any) bool {
-				if !contains(newIds, value.(ProbeWorkerS).Probe.ID) {
-					v := value.(ProbeWorkerS)
-					v.ToRemove = true
-					// if a check if running, we need to figure out a way to kill the process....? or just let it run?
-					log.Warnf("Probe marked as to be removed %s", v.Probe.ID.Hex())
+				probeWorker := value.(ProbeWorkerS)
+				if !contains(newIds, probeWorker.Probe.ID) {
+					probeWorker.ToRemove = true
+					checkWorkers.Store(key, probeWorker)
+					log.Warnf("Probe marked as to be removed %s", probeWorker.Probe.ID.Hex())
+
+					// Stop TrafficSim if it's running
+					if probeWorker.Probe.Type == probes.ProbeType_TRAFFICSIM {
+						if probeWorker.StopChan != nil {
+							close(probeWorker.StopChan)
+						}
+
+						// Wait for cleanup
+						if probeWorker.WaitGroup != nil {
+							probeWorker.WaitGroup.Wait()
+						}
+
+						stopTrafficSim(probeWorker.Probe.ID, probeWorker.Probe.Config.Server)
+					}
 				}
 				return true
 			})
@@ -137,27 +257,55 @@ var speedTestRetryCount = 0
 
 const speedTestRetryMax = 3
 
-var trafficSimServer *probes.TrafficSim
-var trafficSimClients []*probes.TrafficSim
-
 func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thisAgent primitive.ObjectID) {
 	go func(i primitive.ObjectID, dC chan probes.ProbeData) {
+		// Get the worker and increment its WaitGroup
+		var wg *sync.WaitGroup
+		var stopChan chan struct{}
+
+		if agentCheckW, exists := checkWorkers.Load(i); exists {
+			if pw, ok := agentCheckW.(ProbeWorkerS); ok {
+				if pw.WaitGroup != nil {
+					wg = pw.WaitGroup
+					wg.Add(1)
+					defer wg.Done()
+				}
+				stopChan = pw.StopChan
+			}
+		} else {
+			log.Warnf("Probe %s not found when starting worker", i.Hex())
+			return
+		}
+
 		for {
-			agentCheckW, _ := checkWorkers.Load(i)
-			if agentCheckW == nil {
-				time.Sleep(5 * time.Second)
+			agentCheckW, exists := checkWorkers.Load(i)
+			if !exists || agentCheckW == nil {
+				log.Warnf("Probe %s not found, exiting worker", i.Hex())
+				return
 			}
 
-			if agentCheckW.(ProbeWorkerS).ToRemove {
+			probeWorker := agentCheckW.(ProbeWorkerS)
+
+			if probeWorker.ToRemove {
 				checkWorkers.Delete(i)
 				log.Warn("Check with ID " + i.Hex() + " was marked for removal.")
 				break
 			}
 
-			agentCheck := agentCheckW.(ProbeWorkerS).Probe
+			agentCheck := probeWorker.Probe
 
 			switch agentCheck.Type {
 			case probes.ProbeType_TRAFFICSIM:
+				// Check for stop signal
+				if stopChan != nil {
+					select {
+					case <-stopChan:
+						log.Infof("TrafficSim worker %s received stop signal", i.Hex())
+						return
+					default:
+					}
+				}
+
 				checkCfg := agentCheck.Config
 				checkAddress := strings.Split(checkCfg.Target[0].Target, ":")
 
@@ -179,6 +327,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 						allowedAgentsList = append(allowedAgentsList, agent.Agent)
 					}
 
+					trafficSimServerMutex.Lock()
 					if trafficSimServer == nil || !trafficSimServer.Running || trafficSimServer.Errored {
 						trafficSimServer = &probes.TrafficSim{
 							Running:       false,
@@ -194,15 +343,38 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 
 						log.Info("Running & starting traffic sim server...")
 						trafficSimServer.Running = true
-						trafficSimServer.Start(nil)
+						trafficSimServerMutex.Unlock()
+
+						// Start server in a separate goroutine so we can monitor stop signal
+						go trafficSimServer.Start(nil)
+
+						// Monitor for stop signal
+						if stopChan != nil {
+							<-stopChan
+							log.Infof("Stopping TrafficSim server %s", i.Hex())
+							stopTrafficSim(agentCheck.ID, true)
+						}
+						return
 					} else {
 						// Update the allowed agents list dynamically
 						updateAllowedAgents(trafficSimServer, allowedAgentsList)
-						break
+						trafficSimServerMutex.Unlock()
+
+						// Continue monitoring for changes
+						time.Sleep(5 * time.Second)
+						continue
 					}
-					continue
 				} else {
-					// Client logic remains the same
+					// Client logic
+					trafficSimClientsMutex.Lock()
+
+					// Check if this client already exists
+					if existingClient, exists := trafficSimClients[agentCheck.ID]; exists && existingClient.Running {
+						trafficSimClientsMutex.Unlock()
+						time.Sleep(5 * time.Second)
+						continue
+					}
+
 					simClient := &probes.TrafficSim{
 						Running:    false,
 						Errored:    false,
@@ -215,10 +387,25 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 						DataChan:   dC,
 					}
 
-					trafficSimClients = append(trafficSimClients, simClient)
+					trafficSimClients[agentCheck.ID] = simClient
 					simClient.Running = true
-					simClient.Start(&probe)
-					continue
+					trafficSimClientsMutex.Unlock()
+
+					log.Infof("Starting TrafficSim client for probe %s to %s:%d",
+						agentCheck.ID.Hex(), checkAddress[0], portNum)
+
+					// Start client in a separate goroutine so we can monitor stop signal
+					go simClient.Start(&probe)
+
+					// Monitor for stop signal
+					if stopChan != nil {
+						<-stopChan
+						log.Infof("Stopping TrafficSim client %s", i.Hex())
+						stopTrafficSim(agentCheck.ID, false)
+						// Wait a moment to ensure cleanup completes
+						time.Sleep(200 * time.Millisecond)
+					}
+					return
 				}
 
 			case probes.ProbeType_SYSTEMINFO:
@@ -240,6 +427,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 				dC <- cD
 				time.Sleep(time.Duration(agentCheck.Config.Interval) * time.Minute)
 				continue
+
 			case probes.ProbeType_MTR:
 				log.Info("MTR: Running test for ", agentCheck.Config.Target[0].Target, "...")
 				mtr, err := probes.Mtr(&agentCheck, false)
@@ -255,39 +443,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 				dC <- cD
 				time.Sleep(time.Duration(agentCheck.Config.Interval) * time.Minute)
 				continue
-			/*case probes.ProbeType_RPERF:
-			// if check says its a server, start a iperf server based on the bind and port provided in target
-			//todo
-			//make this continue to run, however, make it check if the latest version of the check
-			//apiClient contains it, if not, then break out of this thread
 
-			fmt.Println("Running rperf test for ", agentCheck.Config.Target, "...")
-			rperf := probes.RPerfResults{}
-
-			if agentCheck.Config.Server {
-				err := rperf.Run(&agentCheck)
-				if err != nil {
-					fmt.Println(err)
-					fmt.Println("exiting loop, please check firewall, and recreate check, you may need to reboot")
-					time.Sleep(time.Second * 30)
-				}
-			} else {
-				err := rperf.Check(&agentCheck)
-				if err != nil {
-					fmt.Println(err)
-					fmt.Println("something went wrong processing rperf... sleeping for 30 seconds")
-					time.Sleep(time.Second * 30)
-				}
-
-				cD := probes.ProbeData{
-					ProbeID: agentCheck.ID,
-					Data:    rperf,
-				}
-
-				//fmt.Println("Sending apiClient to the channel (RPERF) for ", agentCheck.Config.Target, "...")
-				dC <- cD
-			}
-			continue*/
 			case probes.ProbeType_SPEEDTEST:
 				// todo make this dynamic and on demand
 				if !speedTestRunning {
@@ -297,13 +453,14 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 						time.Sleep(10 * time.Second)
 						continue
 					}
+					speedTestRunning = true
 					speedTestResult, err := probes.SpeedTest(&agentCheck)
 					if err != nil {
 						log.Error(err)
+						speedTestRunning = false
 						time.Sleep(30 * time.Second)
 						if speedTestRetryCount >= 3 {
 							agentCheck.Config.Target[0].Target = "ok"
-							speedTestRunning = false
 							log.Warn("SpeedTest: Failed to run test after 3 retries, setting target to 'ok'...")
 						}
 						speedTestRetryCount++
@@ -311,6 +468,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 					}
 
 					speedTestRetryCount = 0
+					speedTestRunning = false
 
 					agentCheck.Config.Target[0].Target = "ok"
 
@@ -318,11 +476,11 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 						ProbeID: agentCheck.ID,
 						Data:    speedTestResult,
 					}
-					speedTestRunning = false
 
 					dC <- cD
 				}
 				continue
+
 			case probes.ProbeType_SPEEDTEST_SERVERS:
 				// todo make this dynamic and on demand
 				var speedtestClient = speedtest.New()
@@ -338,6 +496,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 				dC <- cD
 				time.Sleep(time.Hour * 12)
 				break
+
 			case probes.ProbeType_PING:
 				log.Infof("Ping: Running test for %v...", agentCheck.Config.Target[0].Target)
 
@@ -358,6 +517,7 @@ func startCheckWorker(id primitive.ObjectID, dataChan chan probes.ProbeData, thi
 				//time.Sleep(time.Minute * 5)
 				//}
 				continue
+
 			case probes.ProbeType_NETWORKINFO:
 				log.Info("NetInfo: Checking networking information...")
 				net, err := probes.NetworkInfo()

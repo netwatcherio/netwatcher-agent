@@ -100,10 +100,13 @@ func (ts *TrafficSim) buildMessage(msgType TrafficSimMsgType, data TrafficSimDat
 }
 
 func (ts *TrafficSim) runClient(mtrProbe *Probe) error {
-	for {
+	for ts.Running { // Check Running flag
 		currentIP, err := getLocalIP()
 		if err != nil {
 			log.Errorf("TrafficSim: Failed to get local IP: %v", err)
+			if !ts.Running {
+				return nil
+			}
 			time.Sleep(RetryInterval)
 			continue
 		}
@@ -116,6 +119,9 @@ func (ts *TrafficSim) runClient(mtrProbe *Probe) error {
 		toAddr, err := net.ResolveUDPAddr("udp4", ts.IPAddress+":"+strconv.Itoa(int(ts.Port)))
 		if err != nil {
 			log.Errorf("TrafficSim: Could not resolve %v:%d: %v", ts.IPAddress, ts.Port, err)
+			if !ts.Running {
+				return nil
+			}
 			time.Sleep(RetryInterval)
 			continue
 		}
@@ -123,6 +129,9 @@ func (ts *TrafficSim) runClient(mtrProbe *Probe) error {
 		localAddr, err := net.ResolveUDPAddr("udp4", ts.localIP+":0")
 		if err != nil {
 			log.Errorf("TrafficSim: Could not resolve local address: %v", err)
+			if !ts.Running {
+				return nil
+			}
 			time.Sleep(RetryInterval)
 			continue
 		}
@@ -130,6 +139,9 @@ func (ts *TrafficSim) runClient(mtrProbe *Probe) error {
 		conn, err := net.DialUDP("udp4", localAddr, toAddr)
 		if err != nil {
 			log.Errorf("TrafficSim: Unable to connect to %v:%d: %v", ts.IPAddress, ts.Port, err)
+			if !ts.Running {
+				return nil
+			}
 			time.Sleep(RetryInterval)
 			continue
 		}
@@ -145,6 +157,9 @@ func (ts *TrafficSim) runClient(mtrProbe *Probe) error {
 		if err := ts.sendHello(); err != nil {
 			log.Errorf("TrafficSim: Failed to establish connection: %v", err)
 			ts.Conn.Close()
+			if !ts.Running {
+				return nil
+			}
 			time.Sleep(RetryInterval)
 			continue
 		}
@@ -153,6 +168,27 @@ func (ts *TrafficSim) runClient(mtrProbe *Probe) error {
 
 		errChan := make(chan error, 3)
 		stopChan := make(chan struct{})
+		stopOnce := &sync.Once{}
+
+		// Helper function to safely close stopChan
+		safeCloseStop := func() {
+			stopOnce.Do(func() {
+				close(stopChan)
+			})
+		}
+
+		// Monitor Running flag
+		go func() {
+			ticker := time.NewTicker(100 * time.Millisecond)
+			defer ticker.Stop()
+
+			for range ticker.C {
+				if !ts.Running {
+					safeCloseStop()
+					return
+				}
+			}
+		}()
 
 		go ts.runTestCycles(errChan, stopChan, mtrProbe)
 		go ts.receiveDataLoop(errChan, stopChan)
@@ -160,14 +196,28 @@ func (ts *TrafficSim) runClient(mtrProbe *Probe) error {
 		select {
 		case err := <-errChan:
 			log.Errorf("TrafficSim: Error in client loop: %v", err)
-			close(stopChan)
+			safeCloseStop()
 			ts.Conn.Close()
+			if !ts.Running {
+				return nil
+			}
 			time.Sleep(RetryInterval)
+		case <-stopChan:
+			log.Info("TrafficSim: Client stopped by stopChan")
+			ts.Conn.Close()
+			return nil
 		}
 	}
+
+	log.Info("TrafficSim: Client stopped - Running set to false")
+	return nil
 }
 
 func (ts *TrafficSim) sendHello() error {
+	if !ts.Running {
+		return fmt.Errorf("trafficSim is not running")
+	}
+
 	helloMsg, err := ts.buildMessage(TrafficSim_HELLO, TrafficSimData{Sent: time.Now().UnixMilli()})
 	if err != nil {
 		return fmt.Errorf("error building hello message: %v", err)
@@ -194,6 +244,10 @@ func (ts *TrafficSim) runTestCycles(errChan chan<- error, stopChan <-chan struct
 		case <-stopChan:
 			return
 		default:
+			if !ts.Running {
+				return
+			}
+
 			// Reset for new test cycle
 			ts.Mutex.Lock()
 			ts.Sequence = 0
@@ -212,6 +266,10 @@ func (ts *TrafficSim) runTestCycles(errChan chan<- error, stopChan <-chan struct
 				case <-stopChan:
 					return
 				default:
+					if !ts.Running {
+						return
+					}
+
 					ts.Mutex.Lock()
 					ts.Sequence++
 					currentSeq := ts.Sequence
@@ -252,6 +310,10 @@ func (ts *TrafficSim) runTestCycles(errChan chan<- error, stopChan <-chan struct
 			maxWaitTime := PacketTimeout + (500 * time.Millisecond) // Extra buffer
 
 			for time.Since(waitStart) < maxWaitTime {
+				if !ts.Running {
+					return
+				}
+
 				ts.ClientStats.mu.Lock()
 				allComplete := true
 				now := time.Now().UnixMilli()
@@ -285,11 +347,13 @@ func (ts *TrafficSim) runTestCycles(errChan chan<- error, stopChan <-chan struct
 			stats := ts.calculateStats(mtrProbe)
 			ts.ClientStats.mu.Unlock()
 
-			ts.DataChan <- ProbeData{
-				ProbeID:   ts.Probe,
-				Triggered: false,
-				CreatedAt: time.Now(),
-				Data:      stats,
+			if ts.DataChan != nil && ts.Running {
+				ts.DataChan <- ProbeData{
+					ProbeID:   ts.Probe,
+					Triggered: false,
+					CreatedAt: time.Now(),
+					Data:      stats,
+				}
 			}
 
 			// Add a small delay before starting the next test cycle
@@ -307,6 +371,10 @@ func (ts *TrafficSim) receiveDataLoop(errChan chan<- error, stopChan <-chan stru
 		case <-stopChan:
 			return
 		default:
+			if !ts.Running {
+				return
+			}
+
 			msgBuf := make([]byte, 256)
 			ts.Conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 			msgLen, _, err := ts.Conn.ReadFromUDP(msgBuf)
@@ -434,21 +502,23 @@ func (ts *TrafficSim) calculateStats(mtrProbe *Probe) map[string]interface{} {
 		totalPackets, lostPackets, lossPercentage, outOfOrder, avgRTT)
 
 	// Trigger MTR if packet loss exceeds threshold percentage
-	if totalPackets > 0 && lossPercentage > 5.0 {
-		if len(mtrProbe.Config.Target) > 0 {
+	if totalPackets > 0 && lossPercentage > 5.0 && ts.Running {
+		if mtrProbe != nil && len(mtrProbe.Config.Target) > 0 {
 			mtr, err := Mtr(mtrProbe, true)
 			if err != nil {
 				log.Errorf("TrafficSim: MTR error: %v", err)
 			}
 
-			dC := ProbeData{
-				ProbeID:   mtrProbe.ID,
-				Triggered: true,
-				Data:      mtr,
+			if ts.DataChan != nil && ts.Running {
+				dC := ProbeData{
+					ProbeID:   mtrProbe.ID,
+					Triggered: true,
+					Data:      mtr,
+				}
+				log.Infof("TrafficSim: Triggered MTR for %s due to %.2f%% packet loss",
+					mtrProbe.Config.Target[0].Target, lossPercentage)
+				ts.DataChan <- dC
 			}
-			log.Infof("TrafficSim: Triggered MTR for %s due to %.2f%% packet loss",
-				mtrProbe.Config.Target[0].Target, lossPercentage)
-			ts.DataChan <- dC
 		}
 	}
 
@@ -478,14 +548,19 @@ func (ts *TrafficSim) runServer() error {
 	}
 	defer ln.Close()
 
-	log.Infof("Listening on %s:%d", ts.localIP, ts.Port)
+	log.Infof("TrafficSim: Server listening on %s:%d", ts.localIP, ts.Port)
 
 	ts.Connections = make(map[primitive.ObjectID]*Connection)
 
-	for {
+	// Set read timeout to check Running flag periodically
+	for ts.Running {
 		msgBuf := make([]byte, 256)
+		ln.SetReadDeadline(time.Now().Add(1 * time.Second))
 		msgLen, remoteAddr, err := ln.ReadFromUDP(msgBuf)
 		if err != nil {
+			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+				continue // Check Running flag again
+			}
 			if netErr, ok := err.(net.Error); ok && netErr.Temporary() {
 				log.Warn("TrafficSim: Temporary error reading from UDP:", err)
 				continue
@@ -495,9 +570,16 @@ func (ts *TrafficSim) runServer() error {
 
 		go ts.handleConnection(ln, remoteAddr, msgBuf[:msgLen])
 	}
+
+	log.Info("TrafficSim: Server stopped - Running set to false")
+	return nil
 }
 
 func (ts *TrafficSim) handleConnection(conn *net.UDPConn, addr *net.UDPAddr, msg []byte) {
+	if !ts.Running {
+		return
+	}
+
 	tsMsg := TrafficSimMsg{}
 	err := json.Unmarshal(msg, &tsMsg)
 	if err != nil {
@@ -531,6 +613,10 @@ func (ts *TrafficSim) handleConnection(conn *net.UDPConn, addr *net.UDPAddr, msg
 }
 
 func (ts *TrafficSim) sendACK(conn *net.UDPConn, addr *net.UDPAddr, data TrafficSimData) {
+	if !ts.Running {
+		return
+	}
+
 	replyMsg, err := ts.buildMessage(TrafficSim_ACK, data)
 	if err != nil {
 		log.Error("TrafficSim: Error building reply message:", err)
@@ -562,6 +648,9 @@ func (ts *TrafficSim) reportToController(connection *Connection) {
 }
 
 func (ts *TrafficSim) isAgentAllowed(agentID primitive.ObjectID) bool {
+	ts.Mutex.Lock()
+	defer ts.Mutex.Unlock()
+
 	for _, allowedAgent := range ts.AllowedAgents {
 		if allowedAgent == agentID {
 			return true
@@ -571,11 +660,22 @@ func (ts *TrafficSim) isAgentAllowed(agentID primitive.ObjectID) bool {
 }
 
 func (ts *TrafficSim) Start(mtrProbe *Probe) {
-	for {
+	defer func() {
+		log.Infof("TrafficSim: Start() exiting for probe %s", ts.Probe.Hex())
+		ts.Running = false
+		if ts.Conn != nil {
+			ts.Conn.Close()
+		}
+	}()
+
+	for ts.Running {
 		var err error
 		ts.localIP, err = getLocalIP()
 		if err != nil {
 			log.Errorf("TrafficSim: Failed to get local IP: %v", err)
+			if !ts.Running {
+				return
+			}
 			time.Sleep(RetryInterval)
 			continue
 		}
@@ -587,7 +687,22 @@ func (ts *TrafficSim) Start(mtrProbe *Probe) {
 		}
 		if err != nil {
 			log.Errorf("TrafficSim: Error occurred: %v. Retrying in %v...", err, RetryInterval)
+			if !ts.Running {
+				return
+			}
 			time.Sleep(RetryInterval)
 		}
+	}
+}
+
+// Stop gracefully stops the TrafficSim instance
+func (ts *TrafficSim) Stop() {
+	log.Infof("TrafficSim: Stopping probe %s", ts.Probe.Hex())
+	ts.Mutex.Lock()
+	ts.Running = false
+	ts.Mutex.Unlock()
+
+	if ts.Conn != nil {
+		ts.Conn.Close()
 	}
 }
