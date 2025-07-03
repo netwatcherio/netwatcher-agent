@@ -21,6 +21,7 @@ type ProbeWorkerS struct {
 	Probe     probes.Probe
 	ToRemove  bool
 	StopChan  chan struct{}   // For stopping TrafficSim instances
+	StopOnce  *sync.Once      // Ensure StopChan is only closed once
 	WaitGroup *sync.WaitGroup // For waiting for cleanup
 }
 
@@ -143,11 +144,13 @@ func InitProbeWorker(checkChan chan []probes.Probe, dataChan chan probes.ProbeDa
 					log.Infof("Starting NEW worker for probe %s (type: %s)", ad.ID.Hex(), ad.Type)
 					// Store the probe first with new StopChan
 					stopChan := make(chan struct{})
+					stopOnce := &sync.Once{}
 					wg := &sync.WaitGroup{}
 					checkWorkers.Store(ad.ID, ProbeWorkerS{
 						Probe:     ad,
 						ToRemove:  false,
 						StopChan:  stopChan,
+						StopOnce:  stopOnce,
 						WaitGroup: wg,
 					})
 					startCheckWorker(ad.ID, dataChan, thisAgent)
@@ -159,8 +162,10 @@ func InitProbeWorker(checkChan chan []probes.Probe, dataChan chan probes.ProbeDa
 						log.Infof("TrafficSim probe %s configuration changed, restarting", ad.ID.Hex())
 
 						// Stop the old instance
-						if oldProbeWorker.StopChan != nil {
-							close(oldProbeWorker.StopChan)
+						if oldProbeWorker.StopChan != nil && oldProbeWorker.StopOnce != nil {
+							oldProbeWorker.StopOnce.Do(func() {
+								close(oldProbeWorker.StopChan)
+							})
 						}
 
 						// Wait for worker to finish
@@ -178,11 +183,13 @@ func InitProbeWorker(checkChan chan []probes.Probe, dataChan chan probes.ProbeDa
 
 						// Store the updated probe with new StopChan
 						newStopChan := make(chan struct{})
+						newStopOnce := &sync.Once{}
 						newWg := &sync.WaitGroup{}
 						checkWorkers.Store(ad.ID, ProbeWorkerS{
 							Probe:     ad,
 							ToRemove:  false,
 							StopChan:  newStopChan,
+							StopOnce:  newStopOnce,
 							WaitGroup: newWg,
 						})
 
@@ -225,8 +232,10 @@ func InitProbeWorker(checkChan chan []probes.Probe, dataChan chan probes.ProbeDa
 
 					// Stop TrafficSim if it's running
 					if probeWorker.Probe.Type == probes.ProbeType_TRAFFICSIM {
-						if probeWorker.StopChan != nil {
-							close(probeWorker.StopChan)
+						if probeWorker.StopChan != nil && probeWorker.StopOnce != nil {
+							probeWorker.StopOnce.Do(func() {
+								close(probeWorker.StopChan)
+							})
 						}
 
 						// Wait for cleanup
