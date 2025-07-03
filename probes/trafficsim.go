@@ -17,6 +17,7 @@ import (
 const TrafficSim_ReportSeq = 60
 const TrafficSim_DataInterval = 1
 const RetryInterval = 5 * time.Second
+const PacketTimeout = 2 * time.Second
 
 type TrafficSim struct {
 	Running       bool
@@ -33,10 +34,10 @@ type TrafficSim struct {
 	ConnectionsMu sync.RWMutex
 	ClientStats   *ClientStats
 	Sequence      int
-	MaxSequence   int
 	DataChan      chan ProbeData
 	Probe         primitive.ObjectID
 	localIP       string
+	testComplete  chan bool
 	sync.Mutex
 }
 
@@ -60,6 +61,7 @@ type ClientStats struct {
 type PacketTime struct {
 	Sent     int64
 	Received int64
+	TimedOut bool
 }
 
 const (
@@ -138,6 +140,7 @@ func (ts *TrafficSim) runClient(mtrProbe *Probe) error {
 			ReportInterval: 15 * time.Second,
 			PacketTimes:    make(map[int]PacketTime),
 		}
+		ts.testComplete = make(chan bool, 1)
 
 		if err := ts.sendHello(); err != nil {
 			log.Errorf("TrafficSim: Failed to establish connection: %v", err)
@@ -151,8 +154,7 @@ func (ts *TrafficSim) runClient(mtrProbe *Probe) error {
 		errChan := make(chan error, 3)
 		stopChan := make(chan struct{})
 
-		go ts.sendDataLoop(errChan, stopChan)
-		go ts.reportClientStats(stopChan, mtrProbe)
+		go ts.runTestCycles(errChan, stopChan, mtrProbe)
 		go ts.receiveDataLoop(errChan, stopChan)
 
 		select {
@@ -186,45 +188,115 @@ func (ts *TrafficSim) sendHello() error {
 	return nil
 }
 
-func (ts *TrafficSim) sendDataLoop(errChan chan<- error, stopChan <-chan struct{}) {
-	ticker := time.NewTicker(TrafficSim_DataInterval * time.Second)
-	defer ticker.Stop()
-
+func (ts *TrafficSim) runTestCycles(errChan chan<- error, stopChan <-chan struct{}, mtrProbe *Probe) {
 	for {
 		select {
 		case <-stopChan:
 			return
-		case <-ticker.C:
+		default:
+			// Reset for new test cycle
 			ts.Mutex.Lock()
-			ts.Sequence++
-			// Track the maximum sequence number sent
-			if ts.Sequence > ts.MaxSequence {
-				ts.MaxSequence = ts.Sequence
-			}
-			currentSeq := ts.Sequence
+			ts.Sequence = 0
 			ts.Mutex.Unlock()
 
-			sentTime := time.Now().UnixMilli()
-			data := TrafficSimData{Sent: sentTime, Seq: currentSeq}
-			dataMsg, err := ts.buildMessage(TrafficSim_DATA, data)
-			if err != nil {
-				errChan <- fmt.Errorf("error building data message: %v", err)
-				return
-			}
-
-			_, err = ts.Conn.Write([]byte(dataMsg))
-			if err != nil {
-				if netErr, ok := err.(net.Error); ok && netErr.Temporary() {
-					log.Warn("TrafficSim: Temporary error sending data message:", err)
-					continue
-				}
-				errChan <- fmt.Errorf("error sending data message: %v", err)
-				return
-			}
-
 			ts.ClientStats.mu.Lock()
-			ts.ClientStats.PacketTimes[currentSeq] = PacketTime{Sent: sentTime}
+			ts.ClientStats.PacketTimes = make(map[int]PacketTime)
 			ts.ClientStats.mu.Unlock()
+
+			testStartTime := time.Now()
+			packetsInTest := TrafficSim_ReportSeq / TrafficSim_DataInterval
+
+			// Send packets for this test cycle
+			for i := 0; i < packetsInTest; i++ {
+				select {
+				case <-stopChan:
+					return
+				default:
+					ts.Mutex.Lock()
+					ts.Sequence++
+					currentSeq := ts.Sequence
+					ts.Mutex.Unlock()
+
+					sentTime := time.Now().UnixMilli()
+					data := TrafficSimData{Sent: sentTime, Seq: currentSeq}
+					dataMsg, err := ts.buildMessage(TrafficSim_DATA, data)
+					if err != nil {
+						errChan <- fmt.Errorf("error building data message: %v", err)
+						return
+					}
+
+					_, err = ts.Conn.Write([]byte(dataMsg))
+					if err != nil {
+						if netErr, ok := err.(net.Error); ok && netErr.Temporary() {
+							log.Warn("TrafficSim: Temporary error sending data message:", err)
+							continue
+						}
+						errChan <- fmt.Errorf("error sending data message: %v", err)
+						return
+					}
+
+					ts.ClientStats.mu.Lock()
+					ts.ClientStats.PacketTimes[currentSeq] = PacketTime{Sent: sentTime}
+					ts.ClientStats.mu.Unlock()
+
+					// Wait for the interval before sending next packet
+					time.Sleep(TrafficSim_DataInterval * time.Second)
+				}
+			}
+
+			// After sending all packets, wait for responses or timeouts
+			log.Debugf("TrafficSim: Finished sending %d packets, waiting for responses...", packetsInTest)
+
+			// Wait for all packets to complete or timeout
+			waitStart := time.Now()
+			maxWaitTime := PacketTimeout + (500 * time.Millisecond) // Extra buffer
+
+			for time.Since(waitStart) < maxWaitTime {
+				ts.ClientStats.mu.Lock()
+				allComplete := true
+				now := time.Now().UnixMilli()
+
+				for seq := 1; seq <= packetsInTest; seq++ {
+					if pTime, ok := ts.ClientStats.PacketTimes[seq]; ok {
+						if pTime.Received == 0 && !pTime.TimedOut {
+							// Check if this packet has timed out
+							if now-pTime.Sent > int64(PacketTimeout.Milliseconds()) {
+								pTime.TimedOut = true
+								ts.ClientStats.PacketTimes[seq] = pTime
+								log.Debugf("TrafficSim: Packet %d timed out", seq)
+							} else {
+								allComplete = false
+							}
+						}
+					}
+				}
+				ts.ClientStats.mu.Unlock()
+
+				if allComplete {
+					log.Debugf("TrafficSim: All packets complete or timed out")
+					break
+				}
+
+				time.Sleep(50 * time.Millisecond)
+			}
+
+			// Calculate and report stats
+			ts.ClientStats.mu.Lock()
+			stats := ts.calculateStats(mtrProbe)
+			ts.ClientStats.mu.Unlock()
+
+			ts.DataChan <- ProbeData{
+				ProbeID:   ts.Probe,
+				Triggered: false,
+				CreatedAt: time.Now(),
+				Data:      stats,
+			}
+
+			// Add a small delay before starting the next test cycle
+			// This ensures clean separation between tests
+			time.Sleep(1 * time.Second)
+
+			log.Debugf("TrafficSim: Test cycle completed in %v", time.Since(testStartTime))
 		}
 	}
 }
@@ -240,7 +312,6 @@ func (ts *TrafficSim) receiveDataLoop(errChan chan<- error, stopChan <-chan stru
 			msgLen, _, err := ts.Conn.ReadFromUDP(msgBuf)
 			if err != nil {
 				if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-					log.Warn("TrafficSim: Timeout: No response received.")
 					continue
 				}
 				if netErr, ok := err.(net.Error); ok && netErr.Temporary() {
@@ -262,98 +333,18 @@ func (ts *TrafficSim) receiveDataLoop(errChan chan<- error, stopChan <-chan stru
 				data := tsMsg.Data
 				seq := data.Seq
 				receivedTime := time.Now().UnixMilli()
+
 				ts.ClientStats.mu.Lock()
-				if pTime, ok := ts.ClientStats.PacketTimes[seq]; ok {
+				if pTime, ok := ts.ClientStats.PacketTimes[seq]; ok && pTime.Received == 0 && !pTime.TimedOut {
 					pTime.Received = receivedTime
 					ts.ClientStats.PacketTimes[seq] = pTime
+					log.Debugf("TrafficSim: Received ACK for packet %d, RTT: %dms", seq, receivedTime-pTime.Sent)
+				} else if pTime.TimedOut {
+					log.Debugf("TrafficSim: Received late ACK for packet %d (already marked as timed out)", seq)
 				}
 				ts.ClientStats.mu.Unlock()
+
 				ts.LastResponse = time.Now()
-			}
-		}
-	}
-}
-
-func (ts *TrafficSim) reportClientStats(stopChan <-chan struct{}, mtrProbe *Probe) {
-	ticker := time.NewTicker(TrafficSim_ReportSeq * time.Second)
-	defer ticker.Stop()
-
-	const MaxWaitTime = 2 * time.Second           // Increased wait time
-	const PacketTimeout = 1500 * time.Millisecond // Consider packet lost after this time
-
-	for {
-		select {
-		case <-stopChan:
-			return
-		case <-ticker.C:
-			// Stop sending new packets while we wait for lingering responses
-			ts.Mutex.Lock()
-			maxSeqSent := ts.MaxSequence
-			ts.Mutex.Unlock()
-
-			// Wait for lingering packets
-			startWait := time.Now()
-			lastProgress := time.Now()
-
-			for time.Since(startWait) < MaxWaitTime {
-				ts.ClientStats.mu.Lock()
-
-				// Count how many packets are still pending
-				pendingCount := 0
-				oldestPendingTime := int64(0)
-				now := time.Now().UnixMilli()
-
-				for seq := 1; seq <= maxSeqSent; seq++ {
-					if pTime, ok := ts.ClientStats.PacketTimes[seq]; ok && pTime.Received == 0 {
-						packetAge := now - pTime.Sent
-						if packetAge < int64(PacketTimeout.Milliseconds()) {
-							pendingCount++
-							if oldestPendingTime == 0 || pTime.Sent < oldestPendingTime {
-								oldestPendingTime = pTime.Sent
-							}
-						}
-					}
-				}
-
-				ts.ClientStats.mu.Unlock()
-
-				// If no packets are pending (or they're all timed out), we're done waiting
-				if pendingCount == 0 {
-					log.Debugf("TrafficSim: All packets accounted for or timed out")
-					break
-				}
-
-				// If we received some packets recently, reset the progress timer
-				if pendingCount < maxSeqSent {
-					lastProgress = time.Now()
-				}
-
-				// If we haven't made progress in a while, stop waiting
-				if time.Since(lastProgress) > 500*time.Millisecond {
-					log.Debugf("TrafficSim: No progress in 500ms, %d packets still pending", pendingCount)
-					break
-				}
-
-				log.Debugf("TrafficSim: Waiting for %d pending packets, oldest is %dms old",
-					pendingCount, now-oldestPendingTime)
-
-				time.Sleep(50 * time.Millisecond)
-			}
-
-			// Calculate stats after waiting
-			ts.ClientStats.mu.Lock()
-			stats := ts.calculateStats(mtrProbe)
-			ts.ClientStats.PacketTimes = make(map[int]PacketTime)
-			ts.ClientStats.LastReportTime = time.Now()
-			ts.Sequence = 0
-			ts.MaxSequence = 0
-			ts.ClientStats.mu.Unlock()
-
-			ts.DataChan <- ProbeData{
-				ProbeID:   ts.Probe,
-				Triggered: false,
-				CreatedAt: time.Now(),
-				Data:      stats,
 			}
 		}
 	}
@@ -380,9 +371,7 @@ func (ts *TrafficSim) calculateStats(mtrProbe *Probe) map[string]interface{} {
 	lostPackets := 0
 	outOfOrder := 0
 	duplicatePackets := 0
-	lastReceivedTime := int64(0)
-	lastSeq := 0
-	seenPackets := make(map[int]bool)
+	receivedSequences := []int{}
 
 	// Sort keys to process packets in sequence order
 	var keys []int
@@ -391,20 +380,15 @@ func (ts *TrafficSim) calculateStats(mtrProbe *Probe) map[string]interface{} {
 	}
 	sort.Ints(keys)
 
-	now := time.Now().UnixMilli()
-	const PacketLossThreshold = 1500 // ms - consider packet lost after this time
-
 	for _, seq := range keys {
 		pTime := ts.ClientStats.PacketTimes[seq]
-		if pTime.Received == 0 {
-			// Only count as lost if enough time has passed
-			if now-pTime.Sent > PacketLossThreshold {
-				lostPackets++
-				log.Debugf("TrafficSim: Packet %d lost (sent %dms ago)", seq, now-pTime.Sent)
-			}
+		if pTime.Received == 0 || pTime.TimedOut {
+			lostPackets++
+			log.Debugf("TrafficSim: Packet %d lost", seq)
 			continue
 		}
 
+		receivedSequences = append(receivedSequences, seq)
 		rtt := pTime.Received - pTime.Sent
 		rtts = append(rtts, float64(rtt))
 		totalRTT += rtt
@@ -414,20 +398,17 @@ func (ts *TrafficSim) calculateStats(mtrProbe *Probe) map[string]interface{} {
 		if rtt > maxRTT {
 			maxRTT = rtt
 		}
-		if pTime.Received < lastReceivedTime {
-			outOfOrder++
-		}
-		if seq < lastSeq {
-			outOfOrder++
-		}
-		lastReceivedTime = pTime.Received
-		lastSeq = seq
+	}
 
-		// Check for duplicate packets
-		if seenPackets[seq] {
-			duplicatePackets++
-		} else {
-			seenPackets[seq] = true
+	// Check for out of order packets based on receive time
+	for i := 1; i < len(receivedSequences); i++ {
+		prevSeq := receivedSequences[i-1]
+		currSeq := receivedSequences[i]
+
+		// Packets should be received in order of their sequence numbers
+		if currSeq < prevSeq {
+			outOfOrder++
+			log.Debugf("TrafficSim: Out of order: seq %d received after seq %d", currSeq, prevSeq)
 		}
 	}
 
@@ -449,8 +430,8 @@ func (ts *TrafficSim) calculateStats(mtrProbe *Probe) map[string]interface{} {
 		lossPercentage = (float64(lostPackets) / float64(totalPackets)) * 100
 	}
 
-	log.Infof("TrafficSim: Stats - Total: %d, Lost: %d (%.2f%%), Avg RTT: %.2fms",
-		totalPackets, lostPackets, lossPercentage, avgRTT)
+	log.Infof("TrafficSim: Stats - Total: %d, Lost: %d (%.2f%%), Out of Order: %d, Avg RTT: %.2fms",
+		totalPackets, lostPackets, lossPercentage, outOfOrder, avgRTT)
 
 	// Trigger MTR if packet loss exceeds threshold percentage
 	if totalPackets > 0 && lossPercentage > 5.0 {
